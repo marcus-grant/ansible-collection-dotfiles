@@ -1,0 +1,17 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: debian
+    image: geerlingguy/docker-debian12-ansible
+    pre_build_image: true
+provisioner:
+  name: ansible
+verifier:
+  name: ansible
+lint: |
+  set -e
+  yamllint .
+  ansible-lint

@@ -1,0 +1,16 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Verify nodejs is installed
+      ansible.builtin.command: node --version
+      register: node_version
+      changed_when: false
+
+    - name: Assert nodejs version is returned
+      ansible.builtin.assert:
+        that:
+          - node_version.rc == 0
+          - node_version.stdout is match("v[0-9]+\.[0-9]+\.[0-9]+")
+        fail_msg: "Node.js is not installed or not working properly"
