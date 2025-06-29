@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: GPL-3.0-only
+---
+# tasks file for nodejs_system
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  become: true
+
+- name: Install nodejs and npm
+  ansible.builtin.package:
+    name:
+      - nodejs
+      - npm
+    state: present
+  become: true
+
+- name: Install npm packages globally
+  community.general.npm:
+    name: "{{ package }}"
+    global: true
+  become: true
+  loop: "{{ nodejs_system_npm_global_packages }}"
+  loop_control:
+    loop_var: package
+  when: nodejs_system_npm_global_packages | length > 0

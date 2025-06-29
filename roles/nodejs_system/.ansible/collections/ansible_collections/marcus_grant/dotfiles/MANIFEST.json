@@ -1,0 +1,30 @@
+{
+ "collection_info": {
+  "namespace": "marcus_grant",
+  "name": "dotfiles",
+  "version": "1.0.0",
+  "authors": [
+   "marcusfg@protonmail.com"
+  ],
+  "readme": "README.md",
+  "tags": [],
+  "description": "A set of roles to configure dotfiles, shell environment variables, and developer tools people normally consider dotfiles.",
+  "license": [
+   "GPL-2.0-or-later"
+  ],
+  "license_file": null,
+  "dependencies": {},
+  "repository": "https://github.com/marcus-grant/ansible-collection-dotfiles",
+  "documentation": "http://docs.example.com",
+  "homepage": "http://example.com",
+  "issues": "http://example.com/issue/tracker"
+ },
+ "file_manifest_file": {
+  "name": "FILES.json",
+  "ftype": "file",
+  "chksum_type": "sha256",
+  "chksum_sha256": "d25b0af6eef43530daf4bfb6461e8f543b570f9fa215f1c8c168560997114af1",
+  "format": 1
+ },
+ "format": 1
+}

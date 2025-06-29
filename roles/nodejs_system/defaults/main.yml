@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-only
+---
+# defaults file for nodejs_system
+
+# List of npm packages to install globally via npm
+nodejs_system_npm_global_packages: []

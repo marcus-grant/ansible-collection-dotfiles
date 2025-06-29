@@ -1,0 +1,12 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Include nodejs_system role
+      ansible.builtin.include_role:
+        name: nodejs_system
+      vars:
+        nodejs_system_npm_global_packages:
+          - typescript
+          - eslint

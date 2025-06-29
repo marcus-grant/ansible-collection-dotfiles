@@ -1,0 +1,41 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Verify nodejs is installed
+      ansible.builtin.command: node --version
+      register: node_version
+      changed_when: false
+
+    - name: Assert nodejs version is returned
+      ansible.builtin.assert:
+        that:
+          - node_version.rc == 0
+          - node_version.stdout is match("v[0-9]+\.[0-9]+\.[0-9]+")
+        fail_msg: "Node.js is not installed or not working properly"
+
+    - name: Verify npm is functional
+      ansible.builtin.command: npm --version
+      register: npm_version
+      changed_when: false
+
+    - name: Assert npm version is returned
+      ansible.builtin.assert:
+        that:
+          - npm_version.rc == 0
+          - npm_version.stdout is match("[0-9]+\.[0-9]+\.[0-9]+")
+        fail_msg: "npm is not installed or not working properly"
+
+    - name: Verify npm packages are installed globally
+      ansible.builtin.command: npm list -g --depth=0
+      register: npm_packages
+      changed_when: false
+
+    - name: Assert test packages are installed
+      ansible.builtin.assert:
+        that:
+          - npm_packages.rc == 0
+          - "'typescript@' in npm_packages.stdout"
+          - "'eslint@' in npm_packages.stdout"
+        fail_msg: "Required npm packages are not installed globally"
