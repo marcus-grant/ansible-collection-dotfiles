@@ -7,6 +7,9 @@ platforms:
   - name: debian
     image: geerlingguy/docker-debian12-ansible
     pre_build_image: true
+  - name: fedora
+    image: geerlingguy/docker-fedora39-ansible
+    pre_build_image: true
 provisioner:
   name: ansible
 verifier:
