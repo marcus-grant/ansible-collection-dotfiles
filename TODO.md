@@ -9,27 +9,42 @@ This document outlines practical improvements for the `marcus_grant.dotfiles` an
 - **Follow Ansible best practices** - Use FQCN, proper variable naming, etc.
 - **Keep it simple** - Avoid over-engineering solutions
 
+### Python Virtual Environment Requirements
+**MANDATORY**: Always use virtual environments for Python projects:
+
+- **NEVER install packages globally** without explicit permission
+- **ALWAYS create a venv** before installing project dependencies
+- **ALWAYS activate venv** before running any Python/Ansible commands
+- Commands must be prefixed with `source venv/bin/activate &&`
+
 ### Test-Driven Development (TDD) Process
 We follow strict TDD practices for all development:
 
 1. **Red Phase** - Write the test first
    - Write a test in `molecule/default/verify.yml` for a specific behavior
    - The test should fail because the implementation doesn't exist
+   - Run `ansible-lint .` to ensure test code passes linting
    - Run `molecule verify` to confirm the test fails
 
 2. **Green Phase** - Make it pass
    - Implement the simplest solution that makes the test pass
    - No extra features, just make the test green
+   - Run `ansible-lint .` to ensure implementation passes linting
    - Run `molecule converge` then `molecule verify` to confirm
 
 3. **Refactor Phase** - Clean it up
    - Consider if the implementation can be improved
    - Reconsider if the spec itself needs adjustment
+   - Run `ansible-lint .` after any changes
    - Run `molecule test` to ensure everything still works
 
 4. **Repeat** - Next feature
    - Move to the next spec/feature
    - One behavior at a time
+
+**CRITICAL**: 
+- ansible-lint must pass at every phase
+- All Python commands must run in activated venv
 
 ### Example TDD Workflow
 ```bash
