@@ -152,6 +152,12 @@ The collection has been extracted from a larger ansible playbook monorepo to foc
 - [ ] **[LO]** Add usage examples to main README
 - [ ] **[LO]** Document integration with external infra repo
 
+### Performance Optimization
+- [ ] **[LO]** Optimize molecule container build performance
+  - [ ] Investigate Docker layer caching for custom Dockerfiles
+  - [ ] Consider pre-built base images for common test scenarios
+  - [ ] Evaluate if container build time improves after initial builds
+
 ### Cross-Role Variable Sharing Pattern
 - [ ] **[LO]** Research Ansible best practices for variable inheritance patterns
   - [ ] Investigate collection-level vs playbook-level variable precedence
