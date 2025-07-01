@@ -1,3 +1,31 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: GPL-3.0-only
 ---
 # tasks file for nvm
+
+- name: Update package cache
+  ansible.builtin.package:
+    update_cache: true
+  changed_when: false
+
+- name: Install git for NVM installation
+  ansible.builtin.package:
+    name: git
+    state: present
+
+- name: Set NVM installation directory
+  ansible.builtin.set_fact:
+    _nvm_dir: >-
+      {%- if nvm_dir -%}
+        {{ nvm_dir }}
+      {%- elif nvm_xdg_compliant and ansible_env.XDG_DATA_HOME is defined -%}
+        {{ ansible_env.XDG_DATA_HOME }}/nvm
+      {%- else -%}
+        {{ ansible_env.HOME }}/.nvm
+      {%- endif -%}
+
+- name: Clone NVM repository
+  ansible.builtin.git:
+    repo: https://github.com/nvm-sh/nvm.git
+    dest: "{{ _nvm_dir }}"
+    version: "{{ nvm_version }}"
+    recursive: false

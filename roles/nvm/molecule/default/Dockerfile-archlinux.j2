@@ -1,0 +1,18 @@
+# Dockerfile for creating systemd-enabled Arch Linux container for Ansible testing
+FROM archlinux:latest
+
+# Install systemd and enable it
+RUN pacman -Syu --noconfirm && \
+    pacman -S --noconfirm systemd python openssh sudo && \
+    systemctl enable systemd-resolved && \
+    systemctl enable systemd-networkd
+
+# Create ansible user
+RUN useradd -m -G wheel ansible && \
+    echo "ansible ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# Clean package cache
+RUN pacman -Scc --noconfirm
+
+VOLUME ["/sys/fs/cgroup"]
+CMD ["/usr/lib/systemd/systemd"]

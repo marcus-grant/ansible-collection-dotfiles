@@ -1,0 +1,80 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  vars:
+    nodejs_system_distro_packages: >-
+      {%- if ansible_os_family == 'Debian' -%}
+      ['node-gyp', 'nodejs-doc']
+      {%- elif ansible_os_family == 'RedHat' -%}
+      ['nodejs-docs']
+      {%- else -%}
+      []
+      {%- endif -%}
+  tasks:
+    - name: Verify nodejs is installed
+      ansible.builtin.command: node --version
+      register: node_version
+      changed_when: false
+
+    - name: Assert nodejs version is returned
+      ansible.builtin.assert:
+        that:
+          - node_version.rc == 0
+          - node_version.stdout is match("v[0-9]+\.[0-9]+\.[0-9]+")
+        fail_msg: "Node.js is not installed or not working properly"
+
+    - name: Verify npm is functional
+      ansible.builtin.command: npm --version
+      register: npm_version
+      changed_when: false
+
+    - name: Assert npm version is returned
+      ansible.builtin.assert:
+        that:
+          - npm_version.rc == 0
+          - npm_version.stdout is match("[0-9]+\.[0-9]+\.[0-9]+")
+        fail_msg: "npm is not installed or not working properly"
+
+    - name: Verify npm packages are installed globally
+      ansible.builtin.command: npm list -g --depth=0
+      register: npm_packages
+      changed_when: false
+
+    - name: Assert test packages are installed
+      ansible.builtin.assert:
+        that:
+          - npm_packages.rc == 0
+          - "'typescript@' in npm_packages.stdout"
+          - "'eslint@' in npm_packages.stdout"
+        fail_msg: "Required npm packages are not installed globally"
+
+    - name: Gather facts for distro package verification
+      ansible.builtin.setup:
+      when: nodejs_system_distro_packages is defined
+
+    - name: Verify Debian nodejs packages are installed
+      ansible.builtin.command: dpkg -l {{ package }}
+      register: debian_packages
+      changed_when: false
+      failed_when: debian_packages.rc != 0
+      loop: "{{ nodejs_system_distro_packages }}"
+      loop_control:
+        loop_var: package
+      when:
+        - ansible_os_family == "Debian"
+        - nodejs_system_distro_packages is defined
+        - nodejs_system_distro_packages | length > 0
+
+    - name: Verify RedHat nodejs packages are installed
+      ansible.builtin.command: rpm -q {{ package }}
+      register: redhat_packages
+      changed_when: false
+      failed_when: redhat_packages.rc != 0
+      loop: "{{ nodejs_system_distro_packages }}"
+      loop_control:
+        loop_var: package
+      when:
+        - ansible_os_family == "RedHat"
+        - nodejs_system_distro_packages is defined
+        - nodejs_system_distro_packages | length > 0

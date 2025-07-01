@@ -1,0 +1,90 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  tasks:
+    # debian12 - default behavior tests
+    - name: Check default NVM directory on debian12
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.nvm"
+      register: default_nvm_dir
+      when: inventory_hostname == "debian12"
+
+    - name: Verify default NVM directory exists on debian12
+      ansible.builtin.assert:
+        that:
+          - default_nvm_dir.stat.exists
+          - default_nvm_dir.stat.isdir
+        fail_msg: "Default NVM directory {{ ansible_env.HOME }}/.nvm does not exist"
+      when: inventory_hostname == "debian12"
+
+    # debian-sid - XDG compliance tests
+    - name: Check XDG NVM directory on debian-sid
+      ansible.builtin.stat:
+        path: "/root/.local/share/nvm"
+      register: xdg_nvm_dir
+      when: inventory_hostname == "debian-sid"
+
+    - name: Verify XDG NVM directory exists on debian-sid
+      ansible.builtin.assert:
+        that:
+          - xdg_nvm_dir.stat.exists
+          - xdg_nvm_dir.stat.isdir
+        fail_msg: "XDG NVM directory /root/.local/share/nvm does not exist"
+      when: inventory_hostname == "debian-sid"
+
+    - name: Check that default location is NOT used on debian-sid
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.nvm"
+      register: xdg_default_check
+      when: inventory_hostname == "debian-sid"
+
+    - name: Verify default location not used on debian-sid
+      ansible.builtin.assert:
+        that:
+          - not xdg_default_check.stat.exists
+        fail_msg: "Default location ~/.nvm should not exist when XDG is configured"
+      when: inventory_hostname == "debian-sid"
+
+    # fedora - explicit directories tests
+    - name: Check explicit NVM directory on fedora
+      ansible.builtin.stat:
+        path: "/opt/nvm"
+      register: explicit_nvm_dir
+      when: inventory_hostname == "fedora"
+
+    - name: Verify explicit NVM directory exists on fedora
+      ansible.builtin.assert:
+        that:
+          - explicit_nvm_dir.stat.exists
+          - explicit_nvm_dir.stat.isdir
+        fail_msg: "Explicit NVM directory /opt/nvm does not exist"
+      when: inventory_hostname == "fedora"
+
+    - name: Check that default location is NOT used on fedora
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.nvm"
+      register: explicit_default_check
+      when: inventory_hostname == "fedora"
+
+    - name: Verify default location not used on fedora
+      ansible.builtin.assert:
+        that:
+          - not explicit_default_check.stat.exists
+        fail_msg: "Default location ~/.nvm should not exist when explicit directory is configured"
+      when: inventory_hostname == "fedora"
+
+    # archlinux - XDG disabled tests (should use default location)
+    - name: Check default NVM directory on archlinux
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.nvm"
+      register: arch_default_nvm_dir
+      when: inventory_hostname == "archlinux"
+
+    - name: Verify default NVM directory exists on archlinux
+      ansible.builtin.assert:
+        that:
+          - arch_default_nvm_dir.stat.exists
+          - arch_default_nvm_dir.stat.isdir
+        fail_msg: "Default NVM directory {{ ansible_env.HOME }}/.nvm does not exist on archlinux"
+      when: inventory_hostname == "archlinux"

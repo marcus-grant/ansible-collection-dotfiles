@@ -1,0 +1,25 @@
+# Molecule managed
+
+FROM archlinux:latest
+
+RUN pacman -Sy --noconfirm \
+    && pacman -S --noconfirm \
+        python \
+        python-pip \
+        systemd \
+        sudo \
+    && pacman -Scc --noconfirm
+
+# Install Ansible via pip
+RUN pip install ansible
+
+# Create ansible user
+RUN useradd -m -s /bin/bash ansible \
+    && echo 'ansible ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+# Enable systemd
+RUN systemctl set-default multi-user.target
+
+VOLUME ["/sys/fs/cgroup"]
+
+CMD ["/usr/lib/systemd/systemd"]

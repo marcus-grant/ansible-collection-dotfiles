@@ -1,8 +1,35 @@
 ---
 - name: Converge
   hosts: all
-  gather_facts: false
+  gather_facts: true
+  become: true
   tasks:
-    - name: Replace this task with one that validates your content
-      ansible.builtin.debug:
-        msg: "This is the effective test"
+    # debian12 - test default behavior
+    - name: Include nvm role for debian12 (default behavior)
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.nvm
+      when: inventory_hostname == "debian12"
+
+    # debian-sid - test XDG compliance
+    - name: Set XDG environment variables for debian-sid
+      ansible.builtin.set_fact:
+        ansible_env: "{{ ansible_env | combine({'XDG_DATA_HOME': '/root/.local/share', 'XDG_CACHE_HOME': '/root/.cache'}) }}"
+      when: inventory_hostname == "debian-sid"
+
+    - name: Include nvm role for debian-sid (XDG compliant)
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.nvm
+      vars:
+        nvm_xdg_compliant: true
+      when: inventory_hostname == "debian-sid"
+
+    # fedora - test explicit directories
+    - name: Include nvm role for fedora (explicit directories)
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.nvm
+      vars:
+        nvm_dir: /opt/nvm
+        nvm_cache_dir: /opt/nvm-cache
+        nvm_node_prefix: /opt/nvm-versions
+        nvm_npm_config_prefix: /opt/npm-global
+      when: inventory_hostname == "fedora"
