@@ -41,3 +41,14 @@ not listed below are of low quality and should not be used.
   * A role that installs then configures a ZSH shell environment using
     a clone git repo of ZSH dotfiles.
   * [*Role link!*](./roles/zsh/)
+* **nodejs_system**
+  * *Description*:
+    System-level Node.js installation and management. Installs Node.js/npm 
+    via package manager and optionally installs global npm packages and 
+    additional distribution packages.
+  * [*Role link!*](./roles/nodejs_system/)
+  * **Features**:
+    * Cross-platform support (Debian/Ubuntu, RedHat/Fedora)
+    * Global npm package installation
+    * Distribution-specific Node.js package installation
+    * Comprehensive molecule testing

@@ -1,38 +1,144 @@
-Role Name
-=========
+# nodejs_system
 
-A brief description of the role goes here.
+A system-level Node.js installation and management role for Ansible.
+This role installs Node.js and npm via
+the distribution package manager and
+optionally installs additional Node.js-related packages and global npm packages.
 
-Requirements
-------------
+## Requirements
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+- Ansible Core 2.15+
+- Target systems: Debian/Ubuntu, RedHat/Fedora/CentOS
+- `community.general` collection (for npm module)
 
-Role Variables
---------------
+## Role Variables
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+### Required Variables
 
-Dependencies
-------------
+None. The role will install Node.js and npm with default settings if
+no variables are provided.
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+### Optional Variables
 
-Example Playbook
-----------------
+```yaml
+# List of npm packages to install globally via npm
+nodejs_system_npm_global_packages: []
+# Example:
+# nodejs_system_npm_global_packages:
+#   - typescript
+#   - eslint
+#   - @vue/cli
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+# List of distro packages to install via package manager
+nodejs_system_distro_packages: []
+# Example for Debian/Ubuntu:
+# nodejs_system_distro_packages:
+#   - node-gyp
+#   - nodejs-doc
+# Example for RedHat/Fedora:
+# nodejs_system_distro_packages:
+#   - nodejs-docs
+```
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+## Dependencies
 
-License
--------
+- `community.general` collection (automatically handles npm installations)
 
-BSD
+## Supported Platforms
 
-Author Information
-------------------
+- **Debian/Ubuntu**: Installs `nodejs` and `npm` packages
+- **RedHat/Fedora/CentOS**: Installs `nodejs` and `npm` packages  
+- **Other distributions**:
+  - Basic nodejs/npm installation (distro packages may not work)
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+## Example Playbooks
+
+### Basic Installation
+
+```yaml
+- hosts: servers
+  become: true
+  roles:
+    - marcus_grant.dotfiles.nodejs_system
+```
+
+### With Global npm Packages
+
+```yaml
+- hosts: development
+  become: true
+  roles:
+    - role: marcus_grant.dotfiles.nodejs_system
+      vars:
+        nodejs_system_npm_global_packages:
+          - typescript
+          - eslint
+          - nodemon
+```
+
+### With Distribution Packages
+
+```yaml
+- hosts: build_servers
+  become: true
+  roles:
+    - role: marcus_grant.dotfiles.nodejs_system
+      vars:
+        nodejs_system_distro_packages:
+          - node-gyp
+          - nodejs-doc
+        nodejs_system_npm_global_packages:
+          - typescript
+```
+
+### Full Configuration
+
+```yaml
+- hosts: all
+  become: true
+  roles:
+    - role: marcus_grant.dotfiles.nodejs_system
+      vars:
+        nodejs_system_npm_global_packages:
+          - typescript
+          - eslint
+          - prettier
+          - nodemon
+        nodejs_system_distro_packages: "{{ 
+          ['node-gyp', 'nodejs-doc'] if ansible_os_family == 'Debian' 
+          else ['nodejs-docs'] if ansible_os_family == 'RedHat'
+          else [] }}"
+```
+
+## What This Role Does
+
+1. **Updates package cache** on the target system
+2. **Installs Node.js and npm** via the distribution package manager
+3. **Installs global npm packages** (if specified)
+4. **Installs additional distribution packages** (if specified)
+
+## Testing
+
+This role includes comprehensive molecule tests covering:
+
+- Node.js and npm installation verification
+- Global npm package installation
+- Distribution package installation per OS family
+- Multi-platform testing (Debian 12, Debian sid, Fedora)
+
+Run tests with:
+
+```bash
+cd roles/nodejs_system
+molecule test
+```
+
+## License
+
+GPL-3.0-only
+
+## Author Information
+
+Marcus Grant - Part of the marcus_grant.dotfiles collection for
+system configuration management.
+
