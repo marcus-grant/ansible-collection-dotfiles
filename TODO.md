@@ -123,30 +123,33 @@ The collection has been extracted from a larger ansible playbook monorepo to foc
   - `security` - gpg, pass_store roles
 - [ ] **[HI]** Create example playbook showing common use cases
 
-### Create Node.js Role with TDD Workflow
-- [ ] **[HI]** Design nodejs role specifications
-  - [ ] Install nodejs and npm via system package manager
-  - [ ] Support for installing npm packages at system level
-  - [ ] Research: npm global install vs distro package manager packages
-  - [ ] Research: Best practices for system-level npm package management
-- [ ] **[HI]** Implement nodejs role using strict TDD
-  - [ ] Create role structure with `ansible-galaxy role init`
-  - [ ] Write first test: verify nodejs is installed
-  - [ ] Implement nodejs installation for multiple distros
-  - [ ] Write test: verify npm is installed and functional
-  - [ ] Implement npm installation
-  - [ ] Write test: verify specified npm packages are installed
-  - [ ] Implement npm package installation (method TBD based on research)
-- [ ] **[HI]** Role implementation decisions
-  - [ ] Option 1: Always use `npm install -g` for packages
-  - [ ] Option 2: Prefer distro packages (e.g., `apt install node-typescript`)
-  - [ ] Option 3: Make it configurable per package
-  - [ ] Document decision and rationale
-- [ ] **[HI]** Test across all supported platforms
-  - [ ] Debian/Ubuntu (apt)
-  - [ ] RedHat/Fedora (dnf/yum)
-  - [ ] Arch (pacman)
-  - [ ] Ensure consistent behavior across distros
+### Create Node.js Roles with TDD Workflow
+- [x] **[HI]** nodejs_system role - System-level Node.js installation ✅
+  - [x] Install nodejs and npm via system package manager
+  - [x] Support for installing npm packages globally via npm
+  - [x] Support for installing distro-specific Node.js packages
+  - [x] Full TDD implementation with comprehensive tests
+  - [x] Cross-platform support (Debian, RedHat, other families)
+  - [x] Complete documentation and collection integration
+- [ ] **[HI]** nvm role - NVM-based Node.js version management
+  - [ ] Git-based NVM installation (not curl|bash)
+  - [ ] XDG Base Directory Specification compliance by default
+  - [ ] Flexible directory control for all NVM locations:
+    - [ ] `nvm_dir` - NVM installation directory
+    - [ ] `nvm_cache_dir` - Download cache location  
+    - [ ] `nvm_node_prefix` - Node.js versions install location
+    - [ ] `nvm_npm_config_prefix` - Global npm packages location
+  - [ ] XDG compliance options:
+    - [ ] `nvm_xdg_compliant: true/false` - Auto-detect XDG vars
+    - [ ] Explicit directory overrides when needed
+    - [ ] Sensible fallbacks when XDG vars not set
+  - [ ] Node.js version management features:
+    - [ ] Install specific Node.js versions via `nvm_node_versions: []`
+    - [ ] Set default Node.js version via `nvm_default_version`
+    - [ ] Shell integration (bash/zsh completion)
+  - [ ] Independent role (no dependency on nodejs_system)
+  - [ ] Full TDD implementation with molecule tests
+  - [ ] Comprehensive documentation
 
 ## Low Priority Tasks
 
