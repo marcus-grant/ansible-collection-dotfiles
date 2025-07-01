@@ -4,3 +4,6 @@
 
 # List of npm packages to install globally via npm
 nodejs_system_npm_global_packages: []
+
+# List of distro packages to install via package manager
+nodejs_system_distro_packages: []

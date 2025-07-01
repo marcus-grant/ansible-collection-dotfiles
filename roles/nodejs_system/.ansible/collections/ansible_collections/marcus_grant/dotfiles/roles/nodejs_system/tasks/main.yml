@@ -24,3 +24,15 @@
   loop_control:
     loop_var: package
   when: nodejs_system_npm_global_packages | length > 0
+
+- name: Install distro nodejs packages
+  ansible.builtin.package:
+    name: "{{ package }}"
+    state: present
+  become: true
+  loop: "{{ nodejs_system_distro_packages }}"
+  loop_control:
+    loop_var: package
+  when:
+    - nodejs_system_distro_packages is defined
+    - nodejs_system_distro_packages | length > 0

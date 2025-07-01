@@ -5,8 +5,16 @@
   tasks:
     - name: Include nodejs_system role
       ansible.builtin.include_role:
-        name: nodejs_system
+        name: marcus_grant.dotfiles.nodejs_system
       vars:
         nodejs_system_npm_global_packages:
           - typescript
           - eslint
+        nodejs_system_distro_packages: >-
+          {%- if ansible_os_family == 'Debian' -%}
+          ['node-gyp', 'nodejs-doc']
+          {%- elif ansible_os_family == 'RedHat' -%}
+          ['nodejs-docs']
+          {%- else -%}
+          []
+          {%- endif -%}

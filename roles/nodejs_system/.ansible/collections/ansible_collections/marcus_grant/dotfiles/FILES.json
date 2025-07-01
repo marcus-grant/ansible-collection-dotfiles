@@ -2227,27 +2227,6 @@
    "format": 1
   },
   {
-   "name": "roles/nodejs_system/README.md",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "cc751d75266f757a38189f15d54e548dc87706f14a39756995c27b49eaca8a07",
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/defaults",
-   "ftype": "dir",
-   "chksum_type": null,
-   "chksum_sha256": null,
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/defaults/main.yml",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "48a21f429950fbffadf417b36f5d25b94a66253f05d5041dfa7fe4eadd38ae58",
-   "format": 1
-  },
-  {
    "name": "roles/nodejs_system/files",
    "ftype": "dir",
    "chksum_type": null,
@@ -2255,136 +2234,10 @@
    "format": 1
   },
   {
-   "name": "roles/nodejs_system/handlers",
-   "ftype": "dir",
-   "chksum_type": null,
-   "chksum_sha256": null,
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/handlers/main.yml",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "98f3967cd325ac8e18601715caf195129b37c3d76d32f650c3e8f33bdaf782ab",
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/meta",
-   "ftype": "dir",
-   "chksum_type": null,
-   "chksum_sha256": null,
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/meta/main.yml",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "04894614486b63991a8af74df1db8601fc78a54ed883fc056c0ba2a2734a1e74",
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/tasks",
-   "ftype": "dir",
-   "chksum_type": null,
-   "chksum_sha256": null,
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/tasks/main.yml",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "20dcd615449f7b665616272af72ab03a366ea33964196f55ad4d9c1aa64da062",
-   "format": 1
-  },
-  {
    "name": "roles/nodejs_system/templates",
    "ftype": "dir",
    "chksum_type": null,
    "chksum_sha256": null,
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/tests",
-   "ftype": "dir",
-   "chksum_type": null,
-   "chksum_sha256": null,
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/tests/inventory",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "0ff94a2f3ae5fa1b8dd2993ebf452fc0aa234e3b1e8260479e436ec456310557",
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/tests/test.yml",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "7b81e2700c1f43ddc787ac03fe62056f13ee097521b01a3c49a27c66b0024d23",
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/vars",
-   "ftype": "dir",
-   "chksum_type": null,
-   "chksum_sha256": null,
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/vars/main.yml",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "c88bb5e9310c56378739a94447ddef6e5bd733dafa183d787b185ae6f0cf188b",
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/molecule",
-   "ftype": "dir",
-   "chksum_type": null,
-   "chksum_sha256": null,
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/molecule/default",
-   "ftype": "dir",
-   "chksum_type": null,
-   "chksum_sha256": null,
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/molecule/default/converge.yml",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "b51ccaebefe19d00a1ce31f30f3819be6763a73fc71f068433059a53bff9a449",
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/molecule/default/molecule.yml",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "743b4aad63af0a27582e356493e45388708bb34c93fbaef303e1057b2c584471",
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/molecule/default/verify.yml",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "095777fa11f10e2c915d9b6b2009a845d5a4db2cc6f71ac1178b43c0b98a152c",
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/molecule/default/Dockerfile.j2",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "427901b9b2b83982e5afdbecc0dd7feb5653414274e7fd858952a66e5676dbc0",
-   "format": 1
-  },
-  {
-   "name": "roles/nodejs_system/molecule/default/Dockerfile-debian-sid.j2",
-   "ftype": "file",
-   "chksum_type": "sha256",
-   "chksum_sha256": "a1d0b8de766e47ad9a73a6658fa27ecdc2c55a895ba8b2f4c1339c6bcd3aac5e",
    "format": 1
   },
   {
@@ -2430,10 +2283,150 @@
    "format": 1
   },
   {
-   "name": "TODO.md",
+   "name": "roles/nodejs_system/README.md",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "3649a2b1a599ec4abffd2fa71795ed8117c4b9d019add4c9dcbeb8a57ef964b4",
+   "chksum_sha256": "cc751d75266f757a38189f15d54e548dc87706f14a39756995c27b49eaca8a07",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/defaults",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/defaults/main.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "81ec5e1d27df63a1f6dc63c8ff339a6a21d806a0c7159b341aadfc753387151c",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/handlers",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/handlers/main.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "98f3967cd325ac8e18601715caf195129b37c3d76d32f650c3e8f33bdaf782ab",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/meta",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/meta/main.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "04894614486b63991a8af74df1db8601fc78a54ed883fc056c0ba2a2734a1e74",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/molecule",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/molecule/default",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/molecule/default/Dockerfile-debian-sid.j2",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "a1d0b8de766e47ad9a73a6658fa27ecdc2c55a895ba8b2f4c1339c6bcd3aac5e",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/molecule/default/Dockerfile.j2",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "427901b9b2b83982e5afdbecc0dd7feb5653414274e7fd858952a66e5676dbc0",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/molecule/default/molecule.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "743b4aad63af0a27582e356493e45388708bb34c93fbaef303e1057b2c584471",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/molecule/default/converge.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "54082016f58602f7d6556624c20231798f0065e9ba94ba55f0a8813cf0b6cbbe",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/molecule/default/verify.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "a716f85a67b29cb6114505def9f5b4858547ade8ed19bef65d01206c788d8fd9",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/tasks",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/tasks/main.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "d9cc624ff295c729091f281b4ae58a6d654c4a35e3c9319ce65992855f938650",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/tests",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/tests/inventory",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "0ff94a2f3ae5fa1b8dd2993ebf452fc0aa234e3b1e8260479e436ec456310557",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/tests/test.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "7b81e2700c1f43ddc787ac03fe62056f13ee097521b01a3c49a27c66b0024d23",
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/vars",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "roles/nodejs_system/vars/main.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "c88bb5e9310c56378739a94447ddef6e5bd733dafa183d787b185ae6f0cf188b",
    "format": 1
   },
   {
@@ -27591,7 +27584,7 @@
    "name": "venv/lib/python3.12/site-packages/ansiblelint/schemas/__store__.json",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "0f004c11736001ebb2a22a9017e4a6ef77379fff717b70ccf815468e9fa22cc8",
+   "chksum_sha256": "3f05d4a8fdbd1d57a5b2875e9793b4f7c065e2ccf827c975b0904f6ed164e1f3",
    "format": 1
   },
   {
@@ -27682,7 +27675,7 @@
    "name": "venv/lib/python3.12/site-packages/ansiblelint/schemas/playbook.json",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "d30d2349b22f793cfd4ca8b9c85d628a4be333994f7b3c2e056fd870433da9eb",
+   "chksum_sha256": "c77020c20aafec34d8498f6e2edc89ab70e9113f2e24272f3511a5f639825cc1",
    "format": 1
   },
   {
@@ -28866,6 +28859,13 @@
    "ftype": "file",
    "chksum_type": "sha256",
    "chksum_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "format": 1
+  },
+  {
+   "name": "TODO.md",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "3649a2b1a599ec4abffd2fa71795ed8117c4b9d019add4c9dcbeb8a57ef964b4",
    "format": 1
   }
  ],
