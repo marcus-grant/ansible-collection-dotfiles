@@ -164,3 +164,35 @@
         that:
           - bash_completion_check.rc == 0
         fail_msg: "Bash completion not configured in NVM profile.d file"
+
+    # Phase 4: Integration testing - actual NVM functionality
+    - name: Test NVM availability in new shell
+      ansible.builtin.shell: |
+        source {{ ansible_env.HOME }}/.config/profile.d/20-nvm.sh
+        command -v nvm
+      args:
+        executable: /bin/bash
+      register: nvm_available
+      changed_when: false
+
+    - name: Assert NVM is available
+      ansible.builtin.assert:
+        that:
+          - nvm_available.rc == 0
+        fail_msg: "NVM command not available after sourcing profile.d file"
+
+    - name: Test NVM version command works
+      ansible.builtin.shell: |
+        source {{ ansible_env.HOME }}/.config/profile.d/20-nvm.sh
+        nvm --version
+      args:
+        executable: /bin/bash
+      register: nvm_version_check
+      changed_when: false
+
+    - name: Assert NVM version command succeeds
+      ansible.builtin.assert:
+        that:
+          - nvm_version_check.rc == 0
+          - nvm_version_check.stdout | length > 0
+        fail_msg: "NVM version command failed or returned empty output"
