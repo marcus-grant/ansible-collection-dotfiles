@@ -86,3 +86,68 @@
           - nvm_profile_file.stat.mode == '0644'
         fail_msg: "NVM profile.d file does not exist or has wrong permissions"
       when: nvm_configure_shell | default(true)
+
+    # Phase 2.2: Template content verification across distros
+    - name: Verify NVM_DIR in profile.d file (fedora - default)
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_env.HOME }}/.config/profile.d/20-nvm.sh"
+        line: 'export NVM_DIR="{{ ansible_env.HOME }}/.nvm"'
+        state: present
+      check_mode: yes
+      register: fedora_nvm_dir_check
+      when: inventory_hostname == "fedora"
+
+    - name: Assert correct NVM_DIR for fedora
+      ansible.builtin.assert:
+        that:
+          - not fedora_nvm_dir_check.changed
+        fail_msg: "NVM_DIR not correctly set in profile.d file for fedora"
+      when: inventory_hostname == "fedora"
+
+    - name: Verify NVM_DIR in profile.d file (debian12 - XDG)
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_env.HOME }}/.config/profile.d/20-nvm.sh"
+        line: 'export NVM_DIR="/tmp/xdg-data/nvm"'
+        state: present
+      check_mode: yes
+      register: debian12_nvm_dir_check
+      when: inventory_hostname == "debian12"
+
+    - name: Assert correct NVM_DIR for debian12
+      ansible.builtin.assert:
+        that:
+          - not debian12_nvm_dir_check.changed
+        fail_msg: "NVM_DIR not correctly set in profile.d file for debian12"
+      when: inventory_hostname == "debian12"
+
+    - name: Verify NVM_DIR in profile.d file (debian-sid - explicit)
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_env.HOME }}/.config/profile.d/20-nvm.sh"
+        line: 'export NVM_DIR="/opt/nvm"'
+        state: present
+      check_mode: yes
+      register: debian_sid_nvm_dir_check
+      when: inventory_hostname == "debian-sid"
+
+    - name: Assert correct NVM_DIR for debian-sid
+      ansible.builtin.assert:
+        that:
+          - not debian_sid_nvm_dir_check.changed
+        fail_msg: "NVM_DIR not correctly set in profile.d file for debian-sid"
+      when: inventory_hostname == "debian-sid"
+
+    - name: Verify NVM_DIR in profile.d file (archlinux - explicit)
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_env.HOME }}/.config/profile.d/20-nvm.sh"
+        line: 'export NVM_DIR="/opt/nvm"'
+        state: present
+      check_mode: yes
+      register: archlinux_nvm_dir_check
+      when: inventory_hostname == "archlinux"
+
+    - name: Assert correct NVM_DIR for archlinux
+      ansible.builtin.assert:
+        that:
+          - not archlinux_nvm_dir_check.changed
+        fail_msg: "NVM_DIR not correctly set in profile.d file for archlinux"
+      when: inventory_hostname == "archlinux"
