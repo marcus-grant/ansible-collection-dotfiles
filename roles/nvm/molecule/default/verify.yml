@@ -88,3 +88,18 @@
           - arch_default_nvm_dir.stat.isdir
         fail_msg: "Default NVM directory {{ ansible_env.HOME }}/.nvm does not exist on archlinux"
       when: inventory_hostname == "archlinux"
+
+    # Test NVM script installation - add one test for debian12
+    - name: Check if NVM script exists
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+      register: nvm_script_stat
+      when: inventory_hostname == "debian12"
+
+    - name: Verify NVM script is executable
+      ansible.builtin.assert:
+        that:
+          - nvm_script_stat.stat.exists
+          - nvm_script_stat.stat.executable
+        fail_msg: "NVM script does not exist or is not executable"
+      when: inventory_hostname == "debian12"

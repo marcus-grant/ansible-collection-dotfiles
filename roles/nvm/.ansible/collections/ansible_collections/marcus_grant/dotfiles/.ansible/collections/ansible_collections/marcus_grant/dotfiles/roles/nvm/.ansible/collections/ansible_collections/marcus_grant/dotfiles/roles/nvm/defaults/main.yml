@@ -1,3 +1,23 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: GPL-3.0-only
 ---
 # defaults file for nvm
+
+# NVM version to install
+nvm_version: v0.40.3
+
+# Enable XDG Base Directory compliance
+# When true, NVM will use XDG environment variables if set
+nvm_xdg_compliant: true
+
+# Explicit directory configuration
+# These override XDG compliance when set
+nvm_dir: ""  # NVM installation directory
+nvm_cache_dir: ""  # Download cache location
+nvm_node_prefix: ""  # Node.js versions install location
+nvm_npm_config_prefix: ""  # Global npm packages location
+
+# Node.js versions to install
+nvm_node_versions: []
+
+# Default Node.js version
+nvm_default_version: ""

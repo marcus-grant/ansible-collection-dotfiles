@@ -23,9 +23,63 @@
         {{ ansible_env.HOME }}/.nvm
       {%- endif -%}
 
+- name: Set NVM cache directory
+  ansible.builtin.set_fact:
+    _nvm_cache_dir: >-
+      {%- if nvm_cache_dir -%}
+        {{ nvm_cache_dir }}
+      {%- elif nvm_xdg_compliant and ansible_env.XDG_CACHE_HOME is defined -%}
+        {{ ansible_env.XDG_CACHE_HOME }}/nvm
+      {%- else -%}
+        {{ ansible_env.HOME }}/.cache/nvm
+      {%- endif -%}
+
+- name: Set NVM node prefix directory
+  ansible.builtin.set_fact:
+    _nvm_node_prefix: >-
+      {%- if nvm_node_prefix -%}
+        {{ nvm_node_prefix }}
+      {%- elif nvm_xdg_compliant and ansible_env.XDG_DATA_HOME is defined -%}
+        {{ ansible_env.XDG_DATA_HOME }}/nvm/versions
+      {%- else -%}
+        {{ _nvm_dir }}/versions
+      {%- endif -%}
+
+- name: Set NVM npm config prefix directory
+  ansible.builtin.set_fact:
+    _nvm_npm_config_prefix: >-
+      {%- if nvm_npm_config_prefix -%}
+        {{ nvm_npm_config_prefix }}
+      {%- elif nvm_xdg_compliant and ansible_env.XDG_DATA_HOME is defined -%}
+        {{ ansible_env.XDG_DATA_HOME }}/npm
+      {%- else -%}
+        {{ ansible_env.HOME }}/.npm-global
+      {%- endif -%}
+
 - name: Clone NVM repository
   ansible.builtin.git:
     repo: https://github.com/nvm-sh/nvm.git
     dest: "{{ _nvm_dir }}"
     version: "{{ nvm_version }}"
     recursive: false
+
+- name: Install Node.js versions
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ _nvm_dir }}"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    nvm install {{ item }}
+  args:
+    executable: /bin/bash
+    creates: "{{ _nvm_node_prefix }}/node/v{{ item }}"
+  loop: "{{ nvm_node_versions }}"
+  when: nvm_node_versions | length > 0
+
+- name: Set default Node.js version
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ _nvm_dir }}"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    nvm alias default {{ nvm_default_version }}
+  args:
+    executable: /bin/bash
+  when: nvm_default_version | length > 0
+  changed_when: true

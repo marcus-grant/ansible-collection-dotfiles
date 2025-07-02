@@ -62,3 +62,24 @@
     dest: "{{ _nvm_dir }}"
     version: "{{ nvm_version }}"
     recursive: false
+
+- name: Install Node.js versions
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ _nvm_dir }}"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    nvm install {{ item }}
+  args:
+    executable: /bin/bash
+    creates: "{{ _nvm_node_prefix }}/node/v{{ item }}"
+  loop: "{{ nvm_node_versions }}"
+  when: nvm_node_versions | length > 0
+
+- name: Set default Node.js version
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ _nvm_dir }}"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    nvm alias default {{ nvm_default_version }}
+  args:
+    executable: /bin/bash
+  when: nvm_default_version | length > 0
+  changed_when: true

@@ -8,6 +8,11 @@
     - name: Include nvm role for debian12 (default behavior)
       ansible.builtin.include_role:
         name: marcus_grant.dotfiles.nvm
+      vars:
+        nvm_node_versions:
+          - "18.19.0"
+          - "20.11.0"
+        nvm_default_version: "20.11.0"
       when: inventory_hostname == "debian12"
 
     # debian-sid - test XDG compliance
@@ -33,3 +38,11 @@
         nvm_node_prefix: /opt/nvm-versions
         nvm_npm_config_prefix: /opt/npm-global
       when: inventory_hostname == "fedora"
+
+    # archlinux - test XDG disabled (fallback to defaults)
+    - name: Include nvm role for archlinux (XDG disabled)
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.nvm
+      vars:
+        nvm_xdg_compliant: false
+      when: inventory_hostname == "archlinux"
