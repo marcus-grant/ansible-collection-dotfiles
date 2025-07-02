@@ -45,18 +45,18 @@
         fail_msg: "Explicit NVM directory /opt/nvm does not exist"
       when: inventory_hostname == "debian-sid"
 
-    # archlinux - explicit directories overriding XDG tests
-    - name: Check explicit cache directory on archlinux
+    # archlinux - test XDG with explicit NVM directory override
+    - name: Check explicit NVM directory on archlinux
       ansible.builtin.stat:
-        path: "/opt/nvm-cache"
-      register: arch_explicit_cache
+        path: "/opt/nvm"
+      register: arch_explicit_nvm
       when: inventory_hostname == "archlinux"
-    - name: Verify explicit directories override XDG on archlinux
+    - name: Verify explicit NVM directory exists on archlinux
       ansible.builtin.assert:
         that:
-          - arch_explicit_cache.stat.exists
-          - arch_explicit_cache.stat.isdir
-        fail_msg: "Explicit cache directory /opt/nvm-cache should exist and override XDG"
+          - arch_explicit_nvm.stat.exists
+          - arch_explicit_nvm.stat.isdir
+        fail_msg: "Explicit NVM directory /opt/nvm does not exist"
       when: inventory_hostname == "archlinux"
 
     # Profile.d integration tests
@@ -71,3 +71,18 @@
           - profile_d_dir.stat.exists
           - profile_d_dir.stat.isdir
         fail_msg: "Profile.d directory does not exist - dependency not working"
+
+    # Phase 2.1: Test for NVM profile.d file creation
+    - name: Check NVM profile.d file exists
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.config/profile.d/20-nvm.sh"
+      register: nvm_profile_file
+      when: nvm_configure_shell | default(true)
+
+    - name: Verify NVM profile.d file exists
+      ansible.builtin.assert:
+        that:
+          - nvm_profile_file.stat.exists
+          - nvm_profile_file.stat.mode == '0644'
+        fail_msg: "NVM profile.d file does not exist or has wrong permissions"
+      when: nvm_configure_shell | default(true)

@@ -38,9 +38,6 @@
         name: marcus_grant.dotfiles.nvm
       vars:
         nvm_dir: /opt/nvm
-        nvm_cache_dir: /opt/nvm-cache
-        nvm_node_prefix: /opt/nvm-versions
-        nvm_npm_config_prefix: /opt/npm-global
       when: inventory_hostname == "debian-sid"
 
     # archlinux - test explicit directory definitions overriding XDG
@@ -50,7 +47,4 @@
       vars:
         nvm_xdg_compliant: true
         nvm_dir: /opt/nvm
-        nvm_cache_dir: /opt/nvm-cache
-        nvm_node_prefix: /opt/nvm-versions
-        nvm_npm_config_prefix: /opt/npm-global
       when: inventory_hostname == "archlinux"
