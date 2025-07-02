@@ -7,7 +7,7 @@ nvm_version: v0.40.3
 
 # Enable XDG Base Directory compliance
 # When true, NVM will use XDG environment variables if set
-nvm_xdg_compliant: true
+nvm_xdg_compliant: false
 
 # Explicit directory configuration
 # These override XDG compliance when set
@@ -21,3 +21,6 @@ nvm_node_versions: []
 
 # Default Node.js version
 nvm_default_version: ""
+
+# Shell configuration
+nvm_configure_shell: true

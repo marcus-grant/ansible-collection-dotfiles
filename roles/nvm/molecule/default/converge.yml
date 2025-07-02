@@ -3,28 +3,37 @@
   hosts: all
   gather_facts: true
   become: true
+  environment:
+    XDG_DATA_HOME: /tmp/xdg-data
+    XDG_CACHE_HOME: /tmp/xdg-cache
   tasks:
-    # debian12 - test default behavior
-    - name: Include nvm role for debian12 (default behavior)
+    # For the instances that test XDG compliance or its overriding...
+    # Create the directories the XDG vars will point to
+    - name: Create XDG directories for testing
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "/tmp/xdg-data"
+        - "/tmp/xdg-cache"
+
+    # fedora - test default behavior (no xdg, no dir defs)
+    - name: Include nvm role for fedora to test default role behavior
       ansible.builtin.include_role:
         name: marcus_grant.dotfiles.nvm
-      when: inventory_hostname == "debian12"
+      when: inventory_hostname == "fedora"
 
-    # debian-sid - test XDG compliance
-    - name: Set XDG environment variables for debian-sid
-      ansible.builtin.set_fact:
-        ansible_env: "{{ ansible_env | combine({'XDG_DATA_HOME': '/root/.local/share', 'XDG_CACHE_HOME': '/root/.cache'}) }}"
-      when: inventory_hostname == "debian-sid"
-
-    - name: Include nvm role for debian-sid (XDG compliant)
+    # debian12 - test xdg compliant behavior (no dir defs)
+    - name: Include nvm role for debian12 to test XDG compliance behavior
       ansible.builtin.include_role:
         name: marcus_grant.dotfiles.nvm
       vars:
         nvm_xdg_compliant: true
-      when: inventory_hostname == "debian-sid"
+      when: inventory_hostname == "debian12"
 
-    # fedora - test explicit directories
-    - name: Include nvm role for fedora (explicit directories)
+    # debian-sid - test explicit directory definitions (xdg disabled by default)
+    - name: Include nvm role for debian-sid with explicit directory definitions
       ansible.builtin.include_role:
         name: marcus_grant.dotfiles.nvm
       vars:
@@ -32,12 +41,16 @@
         nvm_cache_dir: /opt/nvm-cache
         nvm_node_prefix: /opt/nvm-versions
         nvm_npm_config_prefix: /opt/npm-global
-      when: inventory_hostname == "fedora"
+      when: inventory_hostname == "debian-sid"
 
-    # archlinux - test XDG disabled (fallback to defaults)
-    - name: Include nvm role for archlinux (XDG disabled)
+    # archlinux - test explicit directory definitions overriding XDG
+    - name: Include nvm role for archlinux (XDG compliant)
       ansible.builtin.include_role:
         name: marcus_grant.dotfiles.nvm
       vars:
-        nvm_xdg_compliant: false
+        nvm_xdg_compliant: true
+        nvm_dir: /opt/nvm
+        nvm_cache_dir: /opt/nvm-cache
+        nvm_node_prefix: /opt/nvm-versions
+        nvm_npm_config_prefix: /opt/npm-global
       when: inventory_hostname == "archlinux"
