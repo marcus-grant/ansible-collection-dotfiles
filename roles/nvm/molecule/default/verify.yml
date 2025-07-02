@@ -151,3 +151,16 @@
           - not archlinux_nvm_dir_check.changed
         fail_msg: "NVM_DIR not correctly set in profile.d file for archlinux"
       when: inventory_hostname == "archlinux"
+
+    # Phase 3.1: Bash completion support verification
+    - name: Verify bash completion line exists in template
+      ansible.builtin.shell: grep -q 'bash_completion.*bash_completion' "{{ ansible_env.HOME }}/.config/profile.d/20-nvm.sh"
+      register: bash_completion_check
+      changed_when: false
+      failed_when: bash_completion_check.rc != 0
+
+    - name: Assert bash completion is configured
+      ansible.builtin.assert:
+        that:
+          - bash_completion_check.rc == 0
+        fail_msg: "Bash completion not configured in NVM profile.d file"
