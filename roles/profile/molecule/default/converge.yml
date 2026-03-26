@@ -1,0 +1,30 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    # Case 1: self-user — root configures root's own profile (default profile_home)
+    - name: Include profile role for root (self-user case)
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.profile
+      vars:
+        profile_user: root
+        profile_group: root
+
+    # Case 2: admin targeting another user with explicit profile_home
+    - name: Setup and configure testuser profile
+      become: true
+      block:
+        - name: Ensure testuser exists
+          ansible.builtin.user:
+            name: testuser
+            shell: /bin/bash
+            create_home: true
+
+        - name: Include profile role for testuser (explicit profile_home case)
+          ansible.builtin.include_role:
+            name: marcus_grant.dotfiles.profile
+          vars:
+            profile_user: testuser
+            profile_group: testuser
+            profile_home: /home/testuser
+            profile_d_path: /home/testuser/.config/profile.d

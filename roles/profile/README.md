@@ -15,6 +15,7 @@ If a variable is required, it won't have a default value.
 | ---------------------- | ------- | ------- | ------------------------------------ |
 | profile_user           | **?1**  | user    | User owns file, usually uses default |
 | profile_group          | **?1**  | group   | Group owner, mac has NO sudo         |
+| profile_home           | `~`     | path    | Home dir for profile file; override when targeting another user as root |
 | profile_paths          | `[]`    | [path]  | Add to PATH (earlier override later) |
 | profile_lc_all         | **?2**  | locale  | LC_ALL value, override all locale    |
 | profile_editor         | `vim`   | command | Default editor command               |
@@ -28,6 +29,7 @@ If a variable is required, it won't have a default value.
 > `?2`: Shortens default string of `en_US.UTF-8`.
 > `?3`: Shortens the default LS_COLORS string shown in `defaults/main.yml` of role.
 > `?4`: Shortens default path `~/.config/profile.d`.
+> `profile_home`: Defaults to `~` (the ansible user's home). Set to an absolute path (e.g. `/home/alice`) when an admin runs the role to configure another user's profile.
 > ... it's quite long, no need to show here.
 
 ### Role Variable Notes
@@ -135,7 +137,23 @@ Including an example of how to use your role (for instance, with variables passe
     - "/some/script/path/startup-script.sh"
 
   roles:
-    - name: marcus_grant.dofiles.profile
+    - name: marcus_grant.dotfiles.profile
+```
+
+To configure another user's profile while connecting as root (e.g. in provisioning):
+
+```yaml
+- hosts: all
+  tasks:
+    - name: Configure alice's profile
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.profile
+      vars:
+        profile_user: alice
+        profile_group: alice
+        profile_home: /home/alice
+        profile_d_path: /home/alice/.config/profile.d
+      become: true
 ```
 
 ## License

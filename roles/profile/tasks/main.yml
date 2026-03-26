@@ -11,7 +11,7 @@
 - name: Template profile file
   ansible.builtin.template:
     src: profile.j2
-    dest: "~/.profile"
+    dest: "{{ profile_home }}/.profile"
     owner: "{{ profile_user }}"
     group: "{{ profile_group }}"
     mode: 0640

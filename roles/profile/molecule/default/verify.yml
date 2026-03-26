@@ -1,0 +1,60 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    # Case 1: self-user (root configuring root's own profile, default profile_home)
+    - name: Stat /root/.profile
+      ansible.builtin.stat:
+        path: /root/.profile
+      register: root_profile_file
+
+    - name: Assert /root/.profile exists with mode 0640
+      ansible.builtin.assert:
+        that:
+          - root_profile_file.stat.exists
+          - root_profile_file.stat.mode == '0640'
+
+    - name: Stat /root/.config/profile.d
+      ansible.builtin.stat:
+        path: /root/.config/profile.d
+      register: root_profile_d
+
+    - name: Assert /root/.config/profile.d exists with mode 0750
+      ansible.builtin.assert:
+        that:
+          - root_profile_d.stat.exists
+          - root_profile_d.stat.isdir
+          - root_profile_d.stat.mode == '0750'
+
+    - name: Assert path_prepend defined after sourcing root profile
+      ansible.builtin.shell: bash -c ". /root/.profile && declare -f path_prepend"
+      changed_when: false
+
+    # Case 2: admin targeting another user (explicit profile_home)
+    - name: Stat /home/testuser/.profile
+      ansible.builtin.stat:
+        path: /home/testuser/.profile
+      register: testuser_profile_file
+
+    - name: Assert /home/testuser/.profile exists with mode 0640
+      ansible.builtin.assert:
+        that:
+          - testuser_profile_file.stat.exists
+          - testuser_profile_file.stat.mode == '0640'
+
+    - name: Stat /home/testuser/.config/profile.d
+      ansible.builtin.stat:
+        path: /home/testuser/.config/profile.d
+      register: testuser_profile_d
+
+    - name: Assert /home/testuser/.config/profile.d exists with mode 0750
+      ansible.builtin.assert:
+        that:
+          - testuser_profile_d.stat.exists
+          - testuser_profile_d.stat.isdir
+          - testuser_profile_d.stat.mode == '0750'
+
+    - name: Assert path_prepend defined after sourcing testuser profile
+      ansible.builtin.shell: bash -c ". /home/testuser/.profile && declare -f path_prepend"
+      changed_when: false
