@@ -12,6 +12,7 @@ from ansible_collections.marcus_grant.dotfiles.plugins.modules.dotfiles_git impo
     place_shim_file,
     place_symlink,
     git_clone_or_skip,
+    run_module,
 )
 
 
@@ -195,3 +196,91 @@ class TestGitCloneOrSkip:
         with patch('subprocess.run', return_value=fail_run):
             with pytest.raises(RuntimeError):
                 git_clone_or_skip(self.REPO, dest, 'HEAD', False)
+
+
+class TestRunModule:
+    REPO = 'https://github.com/marcus-grant/dots-zsh'
+
+    @pytest.fixture
+    def module(self):
+        m = MagicMock()
+        m.params = {
+            'repo': self.REPO,
+            'dest': '/root/.config/zsh',
+            'version': 'HEAD',
+            'force': False,
+            'files': [],
+        }
+        return m
+
+    @pytest.fixture
+    def ansible_module_mock(self, module):
+        with patch(
+            'ansible_collections.marcus_grant.dotfiles.plugins.modules'
+            '.dotfiles_git.AnsibleModule',
+            return_value=module,
+        ):
+            yield module
+
+    def test_calls_git_clone_or_skip(self, ansible_module_mock):
+        with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
+                   '.dotfiles_git.git_clone_or_skip', return_value=False) as mock_git:
+            run_module()
+        mock_git.assert_called_once_with(self.REPO, '/root/.config/zsh', 'HEAD', False)
+
+    def test_changed_true_when_cloned(self, ansible_module_mock):
+        with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
+                   '.dotfiles_git.git_clone_or_skip', return_value=True):
+            run_module()
+        ansible_module_mock.exit_json.assert_called_once()
+        assert ansible_module_mock.exit_json.call_args[1]['changed'] is True
+
+    def test_changed_false_when_nothing_changed(self, ansible_module_mock):
+        with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
+                   '.dotfiles_git.git_clone_or_skip', return_value=False):
+            run_module()
+        assert ansible_module_mock.exit_json.call_args[1]['changed'] is False
+
+    def test_shim_file_placed_for_shim_method(self, ansible_module_mock):
+        ansible_module_mock.params['files'] = [{
+            'src': 'rc.zsh', 'dest': '/root/.zshrc',
+            'method': 'shim', 'mode': '0600', 'prepend_lines': [],
+        }]
+        with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
+                   '.dotfiles_git.git_clone_or_skip', return_value=False), \
+             patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
+                   '.dotfiles_git.place_shim_file', return_value=(False, None)) as mock_shim:
+            run_module()
+        mock_shim.assert_called_once()
+
+    def test_symlink_placed_for_symlink_method(self, ansible_module_mock):
+        ansible_module_mock.params['files'] = [{
+            'src': 'rc.zsh', 'dest': '/root/.zshrc_sym',
+            'method': 'symlink', 'mode': '0600', 'prepend_lines': [],
+        }]
+        with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
+                   '.dotfiles_git.git_clone_or_skip', return_value=False), \
+             patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
+                   '.dotfiles_git.place_symlink', return_value=False) as mock_link:
+            run_module()
+        mock_link.assert_called_once()
+
+    def test_fail_json_called_on_clone_error(self, ansible_module_mock):
+        with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
+                   '.dotfiles_git.git_clone_or_skip',
+                   side_effect=RuntimeError('git clone failed: fatal')):
+            run_module()
+        ansible_module_mock.fail_json.assert_called_once()
+
+    def test_changed_true_when_file_changed(self, ansible_module_mock):
+        ansible_module_mock.params['files'] = [{
+            'src': 'rc.zsh', 'dest': '/root/.zshrc',
+            'method': 'shim', 'mode': '0600', 'prepend_lines': [],
+        }]
+        diff = {'path': '/root/.zshrc', 'before': '', 'after': 'source ...'}
+        with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
+                   '.dotfiles_git.git_clone_or_skip', return_value=False), \
+             patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
+                   '.dotfiles_git.place_shim_file', return_value=(True, diff)):
+            run_module()
+        assert ansible_module_mock.exit_json.call_args[1]['changed'] is True
