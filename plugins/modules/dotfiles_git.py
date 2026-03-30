@@ -72,7 +72,8 @@ notes:
   - C(prepend_lines) and C(mode) only apply to C(method: shim).
   - Use C(method: symlink) for non-shell config files (vim, tmux, etc.) where a shell
     C(source) line would not be interpreted.
-  - Git operations use the system C(git) binary via subprocess.
+  - Requires the C(git) binary to be present on the target host. Ensure it is installed
+    before invoking this module (e.g. via C(ansible.builtin.package)).
 seealso:
   - module: ansible.builtin.git
   - module: ansible.builtin.template

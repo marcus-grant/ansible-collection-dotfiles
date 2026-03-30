@@ -1,0 +1,28 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: Clone dots-zsh and place shim files
+      marcus_grant.dotfiles.dotfiles_git:
+        repo: https://github.com/marcus-grant/dots-zsh
+        dest: /root/.config/zsh
+        force: true
+        files:
+          - src: rc.zsh
+            dest: /root/.zshrc
+          - src: env.zsh
+            dest: /root/.zshenv
+            prepend_lines:
+              - source $HOME/.profile
+          - src: profile.zsh
+            dest: /root/.zprofile
+
+    - name: Clone dots-zsh again and place a symlink
+      marcus_grant.dotfiles.dotfiles_git:
+        repo: https://github.com/marcus-grant/dots-zsh
+        dest: /root/.config/zsh-sym
+        force: true
+        files:
+          - src: rc.zsh
+            dest: /root/.zshrc_sym
+            method: symlink

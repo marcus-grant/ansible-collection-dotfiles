@@ -6,6 +6,59 @@ I've had time to review and modify it to my current standards.
 Any of the roles that exist in this collection but
 not listed below are of low quality and should not be used.
 
+## Development
+
+### Setup
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Unit tests (collection modules)
+
+```bash
+source venv/bin/activate
+python -m pytest tests/unit/ -v
+```
+
+### Module integration tests
+
+Collection modules are tested via a collection-level molecule scenario.
+Run from the **collection root**:
+
+```bash
+source venv/bin/activate
+# Install the current working copy so Ansible picks up local changes
+ansible-galaxy collection install . --force
+molecule test -s dotfiles_git
+```
+
+> **Important:** `ansible-galaxy collection install . --force` must be run before
+> every molecule test cycle when working on collection modules. Molecule uses the
+> installed copy at `~/.ansible/collections/`, not the local working tree.
+
+### Role molecule tests
+
+Run from the **role directory**:
+
+```bash
+source ../../venv/bin/activate   # activate from the role directory
+# If the role uses any collection module (e.g. dotfiles_git), reinstall first:
+ansible-galaxy collection install ../.. --force
+molecule test
+```
+
+Step-by-step during development:
+
+```bash
+molecule create
+molecule converge
+molecule verify
+molecule destroy
+```
+
 ## Modules
 
 ### `marcus_grant.dotfiles.dotfiles_git`
@@ -18,6 +71,8 @@ programs expect them. Supports two placement methods:
   Use for shell-sourced files (zsh, bash, profile).
 - **symlink**: creates a symlink at the target path. Use for non-shell config
   files that cannot interpret a `source` line (vim, tmux, git).
+
+**Requirements:** The `git` binary must be present on the target host before invoking this module.
 
 Full parameter reference: `ansible-doc marcus_grant.dotfiles.dotfiles_git`
 

@@ -1,0 +1,52 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Stat zsh dotfile repo
+      ansible.builtin.stat:
+        path: /root/.config/zsh/.git
+      register: zsh_git_dir
+
+    - name: Assert zsh dotfile repo was cloned
+      ansible.builtin.assert:
+        that: zsh_git_dir.stat.exists
+
+    - name: Get git remote of cloned repo
+      ansible.builtin.shell: cd /root/.config/zsh && git remote -v
+      changed_when: false
+      register: zsh_git_remote
+
+    - name: Assert git remote contains dots-zsh
+      ansible.builtin.assert:
+        that: "'dots-zsh' in zsh_git_remote.stdout"
+
+    - name: Assert zshrc shim exists and sources rc.zsh
+      ansible.builtin.shell: grep -q 'rc.zsh' /root/.zshrc
+      changed_when: false
+
+    - name: Assert zshenv shim exists and sources env.zsh
+      ansible.builtin.shell: grep -q 'env.zsh' /root/.zshenv
+      changed_when: false
+
+    - name: Assert zshenv shim prepends profile source before env.zsh
+      ansible.builtin.shell: |
+        profile_line=$(grep -n 'source.*profile' /root/.zshenv | head -1 | cut -d: -f1)
+        env_line=$(grep -n 'env.zsh' /root/.zshenv | head -1 | cut -d: -f1)
+        test "$profile_line" -lt "$env_line"
+      changed_when: false
+
+    - name: Assert zprofile shim exists and sources profile.zsh
+      ansible.builtin.shell: grep -q 'profile.zsh' /root/.zprofile
+      changed_when: false
+
+    - name: Stat symlink test file
+      ansible.builtin.stat:
+        path: /root/.zshrc_sym
+      register: zshrc_sym
+
+    - name: Assert symlink exists and points into sym clone
+      ansible.builtin.assert:
+        that:
+          - zshrc_sym.stat.islnk
+          - "'/root/.config/zsh-sym/rc.zsh' in zshrc_sym.stat.lnk_target"
