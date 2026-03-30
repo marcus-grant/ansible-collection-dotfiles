@@ -6,6 +6,61 @@ I've had time to review and modify it to my current standards.
 Any of the roles that exist in this collection but
 not listed below are of low quality and should not be used.
 
+## Modules
+
+### `marcus_grant.dotfiles.dotfiles_git`
+
+Clones a dotfiles git repository and places config files at the locations
+programs expect them. Supports two placement methods:
+
+- **shim** *(default)*: writes a shell file containing a `source` line pointing
+  into the cloned repo. Idempotent — only written when content differs.
+  Use for shell-sourced files (zsh, bash, profile).
+- **symlink**: creates a symlink at the target path. Use for non-shell config
+  files that cannot interpret a `source` line (vim, tmux, git).
+
+Full parameter reference: `ansible-doc marcus_grant.dotfiles.dotfiles_git`
+
+**Minimal example:**
+
+```yaml
+- name: Clone zsh dotfiles and place shims
+  marcus_grant.dotfiles.dotfiles_git:
+    repo: https://github.com/yourname/dots-zsh
+    dest: ~/.config/zsh
+    files:
+      - src: rc.zsh
+        dest: ~/.zshrc
+      - src: env.zsh
+        dest: ~/.zshenv
+        prepend_lines:
+          - source $HOME/.profile
+      - src: profile.zsh
+        dest: ~/.zprofile
+```
+
+**Parameters:**
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `repo` | yes | — | Git repository URL |
+| `dest` | yes | — | Clone destination (tilde expanded) |
+| `version` | no | `HEAD` | Git ref to check out |
+| `force` | no | `false` | Delete and re-clone even if repo exists |
+| `files` | no | `[]` | List of file placement mappings (see below) |
+
+Each entry in `files`:
+
+| Key | Required | Default | Description |
+|-----|----------|---------|-------------|
+| `src` | yes | — | File path relative to `dest` (inside the clone) |
+| `dest` | yes | — | Absolute path where the program expects this file |
+| `method` | no | `shim` | `shim` or `symlink` |
+| `mode` | no | `0600` | File permissions (shim only) |
+| `prepend_lines` | no | `[]` | Lines written before the `source` line (shim only) |
+
+---
+
 ## Roles
 
 * **profile**
