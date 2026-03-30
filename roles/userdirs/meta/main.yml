@@ -25,7 +25,9 @@ galaxy_info:
     - config
     - shell
 
+# Hard dependency: profile creates ~/.config/profile.d/ and ~/.profile that sources it.
+# Without profile, 10-userdirs.sh has nowhere to land and XDG vars never reach the shell.
+# NOTE: meta dependencies are only honoured when using the `roles:` key in a playbook.
+# When using include_role in a tasks context, run marcus_grant.dotfiles.profile explicitly first.
 dependencies:
   - role: marcus_grant.dotfiles.profile
-# List your role dependencies here, one per line. Be sure to remove the '[]' above,
-# if you add dependencies to this list.

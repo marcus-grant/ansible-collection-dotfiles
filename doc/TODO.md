@@ -13,12 +13,6 @@
 
 Each role: add `Dockerfile-archlinux.j2` + Arch platform to `molecule.yml`, fix any bugs in `converge.yml`/`verify.yml` for all platforms, write Arch-specific verify checks under `when: inventory_hostname == 'archlinux'`.
 
-### `userdirs`
-- Files: add `Dockerfile-archlinux.j2`; update `molecule.yml`, `converge.yml`, `verify.yml`
-- Bug: converge + verify both contain copy-pasted zsh content — rewrite both
-- converge: run `profile` first (explicit meta dependency), then `userdirs`
-- verify: `~/.config/profile.d/10-userdirs.sh` exists mode `0640`; exports XDG vars; XDG dirs exist
-
 ### `zsh`
 - Files: add `Dockerfile-archlinux.j2`; update `molecule.yml`, `converge.yml`, `verify.yml`
 - Bug: verify hardcodes `/root/` paths; checks for symlinks but role templates files

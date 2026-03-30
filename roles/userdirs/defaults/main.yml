@@ -1,6 +1,5 @@
 ---
-# defaults file for zsh
-# userdirs_xdg_use: true  # DELETEME: This is probably not needed anymore
+# defaults file for marcus_grant.dotfiles.userdirs
 userdirs_xdg_profile_d: true
 userdirs_xdg_mkdirs: true
 
@@ -9,7 +8,6 @@ userdirs_xdg_bin_home: .local/bin
 userdirs_xdg_data_home: .local/share
 userdirs_xdg_config_home: .config
 userdirs_xdg_cache_home: .cache
-# TODO: This might need to be deleted as a default, debian issues for user scoped dbus
-# userdirs_xdg_runtime_dir: .cache/run
+userdirs_xdg_state_home: .local/state
 
 userdirs_custom_dirs: []

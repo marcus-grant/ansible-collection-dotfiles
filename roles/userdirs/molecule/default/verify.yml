@@ -1,77 +1,151 @@
 ---
-# This is an example playbook to execute Ansible tests.
 - name: Verify
   hosts: all
   gather_facts: false
   tasks:
+    - name: Stat 10-userdirs.sh
+      ansible.builtin.stat:
+        path: /root/.config/profile.d/10-userdirs.sh
+      register: userdirs_sh
 
-  - name: Check installed packages ansible fact
-    ansible.builtin.package_facts: manager=auto
+    - name: Assert 10-userdirs.sh exists with mode 0640
+      ansible.builtin.assert:
+        that:
+          - userdirs_sh.stat.exists
+          - userdirs_sh.stat.mode == '0640'
 
-  - name: Assert zsh is installed
-    ansible.builtin.assert:
-      that: ansible_facts.packages['zsh'] is defined
+    - name: Assert exactly 5 exported XDG vars
+      ansible.builtin.shell:
+        cmd: grep -c '^export XDG_' /root/.config/profile.d/10-userdirs.sh
+      changed_when: false
+      register: export_count
 
-  - name: Register user modules shell property
-    ansible.builtin.user:
-      name: root
-    register: rootuser
+    - name: Assert export count is exactly 5
+      ansible.builtin.assert:
+        that: export_count.stdout | int == 5
 
-  - name: Assert zsh is the default shell for root user
-    ansible.builtin.assert:
-      that: rootuser.shell == '/usr/bin/zsh'
+    - name: Assert XDG_RUNTIME_DIR is absent (regression guard)
+      ansible.builtin.shell:
+        cmd: grep 'XDG_RUNTIME_DIR' /root/.config/profile.d/10-userdirs.sh
+      changed_when: false
+      register: runtime_dir_check
+      failed_when: runtime_dir_check.rc == 0
 
-  - name: Register stat module for default zsh_config_dir at /root/.config/zsh
-    ansible.builtin.stat:
-      path: /root/.config/zsh
-    register: zsh_path
+    - name: Assert XDG_BIN_HOME is exported to child shell
+      ansible.builtin.shell:
+        cmd: bash -c '. /root/.config/profile.d/10-userdirs.sh && bash -c "echo \$XDG_BIN_HOME"'
+      changed_when: false
+      register: xdg_bin_home
 
-  - name: Assert that zsh_path exists as directory
-    ansible.builtin.assert:
-      that: zsh_path.stat.isdir
+    - name: Assert XDG_BIN_HOME is set
+      ansible.builtin.assert:
+        that: xdg_bin_home.stdout | length > 0
 
-  - name: Register current git remote of /root/.config/zsh
-    ansible.builtin.shell: 'cd /root/.config/zsh; git remote -v'
-    changed_when: false
-    register: shell_git_remote
+    - name: Assert XDG_DATA_HOME is exported to child shell
+      ansible.builtin.shell:
+        cmd: bash -c '. /root/.config/profile.d/10-userdirs.sh && bash -c "echo \$XDG_DATA_HOME"'
+      changed_when: false
+      register: xdg_data_home
 
-  - name: Assert that either a SSH or HTTPS git remote exists on repo
-    ansible.builtin.assert:
-      that: >
-        'git@github.com:marcus-grant/dots-zsh' in shell_git_remote.stdout or
-        'https://github.com/marcus-grant/dots-zsh' in shell_git_remote.stdout
+    - name: Assert XDG_DATA_HOME is set
+      ansible.builtin.assert:
+        that: xdg_data_home.stdout | length > 0
 
-  # - name: Register parent directory of zsh git repo for its contents 
-  #   ansible.builtin.command:
-  #     cmd: "ls -a"
-  #     chdir: /root/.config
-  #   register: zsh_config_parent_dir
-  #   changed_when: false
-  #
-  # - name: Assert the backed up zsh dotfile repo exists
-  #   # ansible.builtin.debug: var=zsh_config_parent_dir
-  #   ansible.builtin.assert:
-  #     that: zsh_config_parent_dir.stdout_lines | length > 3
+    - name: Assert XDG_CONFIG_HOME is exported to child shell
+      ansible.builtin.shell:
+        cmd: bash -c '. /root/.config/profile.d/10-userdirs.sh && bash -c "echo \$XDG_CONFIG_HOME"'
+      changed_when: false
+      register: xdg_config_home
 
-  - name: Register stat for zshrc
-    ansible.builtin.stat: path=/root/.zshrc
-    register: zsh_rc
+    - name: Assert XDG_CONFIG_HOME is set
+      ansible.builtin.assert:
+        that: xdg_config_home.stdout | length > 0
 
-  - name: Register stat for zprofile
-    ansible.builtin.stat: path=/root/.zprofile
-    register: zsh_profile
+    - name: Assert XDG_CACHE_HOME is exported to child shell
+      ansible.builtin.shell:
+        cmd: bash -c '. /root/.config/profile.d/10-userdirs.sh && bash -c "echo \$XDG_CACHE_HOME"'
+      changed_when: false
+      register: xdg_cache_home
 
-  - name: Register stat for zshenv
-    ansible.builtin.stat: path=/root/.zshenv
-    register: zsh_env
+    - name: Assert XDG_CACHE_HOME is set
+      ansible.builtin.assert:
+        that: xdg_cache_home.stdout | length > 0
 
-  - name: Assert that all the expected zsh files are linked to the dotfiles
-    ansible.builtin.assert:
-      that:
-        - item.stat.islnk is defined 
-        - item.stat.lnk_target is defined
-        - item.stat.lnk_target == item.dest
-    loop:
-      - { stat: "{{ zsh_rc.stat }}", dest: /root/.config/zsh/rc.zsh }
-      - { stat: "{{ zsh_profile.stat }}", dest: /root/.config/zsh/profile.zsh }
-      - { stat: "{{ zsh_env.stat }}", dest: /root/.config/zsh/env.zsh }
+    - name: Assert XDG_STATE_HOME is exported to child shell
+      ansible.builtin.shell:
+        cmd: bash -c '. /root/.config/profile.d/10-userdirs.sh && bash -c "echo \$XDG_STATE_HOME"'
+      changed_when: false
+      register: xdg_state_home
+
+    - name: Assert XDG_STATE_HOME is set
+      ansible.builtin.assert:
+        that: xdg_state_home.stdout | length > 0
+
+    - name: Stat XDG_BIN_HOME directory
+      ansible.builtin.stat:
+        path: /root/.local/bin
+      register: bin_dir
+
+    - name: Assert XDG_BIN_HOME dir exists with mode 0750
+      ansible.builtin.assert:
+        that:
+          - bin_dir.stat.exists
+          - bin_dir.stat.isdir
+          - bin_dir.stat.mode == '0750'
+
+    - name: Stat XDG_DATA_HOME directory
+      ansible.builtin.stat:
+        path: /root/.local/share
+      register: data_dir
+
+    - name: Assert XDG_DATA_HOME dir exists with mode 0750
+      ansible.builtin.assert:
+        that:
+          - data_dir.stat.exists
+          - data_dir.stat.isdir
+          - data_dir.stat.mode == '0750'
+
+    - name: Stat XDG_CONFIG_HOME directory
+      ansible.builtin.stat:
+        path: /root/.config
+      register: config_dir
+
+    - name: Assert XDG_CONFIG_HOME dir exists with mode 0750
+      ansible.builtin.assert:
+        that:
+          - config_dir.stat.exists
+          - config_dir.stat.isdir
+          - config_dir.stat.mode == '0750'
+
+    - name: Stat XDG_CACHE_HOME directory
+      ansible.builtin.stat:
+        path: /root/.cache
+      register: cache_dir
+
+    - name: Assert XDG_CACHE_HOME dir exists with mode 0750
+      ansible.builtin.assert:
+        that:
+          - cache_dir.stat.exists
+          - cache_dir.stat.isdir
+          - cache_dir.stat.mode == '0750'
+
+    - name: Stat XDG_STATE_HOME directory
+      ansible.builtin.stat:
+        path: /root/.local/state
+      register: state_dir
+
+    - name: Assert XDG_STATE_HOME dir exists with mode 0750
+      ansible.builtin.assert:
+        that:
+          - state_dir.stat.exists
+          - state_dir.stat.isdir
+          - state_dir.stat.mode == '0750'
+
+    - name: Stat custom testdir
+      ansible.builtin.stat:
+        path: /root/testdir
+      register: testdir
+
+    - name: Assert custom testdir exists
+      ansible.builtin.assert:
+        that: testdir.stat.exists
