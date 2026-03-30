@@ -1,77 +1,64 @@
 ---
-# This is an example playbook to execute Ansible tests.
 - name: Verify
   hosts: all
   gather_facts: false
   tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: auto
 
-  - name: Check installed packages ansible fact
-    ansible.builtin.package_facts: manager=auto
+    - name: Assert zsh is installed
+      ansible.builtin.assert:
+        that: ansible_facts.packages['zsh'] is defined
 
-  - name: Assert zsh is installed
-    ansible.builtin.assert:
-      that: ansible_facts.packages['zsh'] is defined
+    - name: Register root user info
+      ansible.builtin.user:
+        name: root
+      register: rootuser
 
-  - name: Register user modules shell property
-    ansible.builtin.user:
-      name: root
-    register: rootuser
+    - name: Assert zsh is the default shell for root
+      ansible.builtin.assert:
+        that: rootuser.shell == '/usr/bin/zsh'
 
-  - name: Assert zsh is the default shell for root user
-    ansible.builtin.assert:
-      that: rootuser.shell == '/usr/bin/zsh'
+    - name: Stat zsh clone git directory
+      ansible.builtin.stat:
+        path: /root/.config/zsh/.git
+      register: zsh_git
 
-  - name: Register stat module for default zsh_config_dir at /root/.config/zsh
-    ansible.builtin.stat:
-      path: /root/.config/zsh
-    register: zsh_path
+    - name: Assert zsh dotfiles repo is cloned
+      ansible.builtin.assert:
+        that: zsh_git.stat.exists
 
-  - name: Assert that zsh_path exists as directory
-    ansible.builtin.assert:
-      that: zsh_path.stat.isdir
+    - name: Get git remote of zsh dotfiles
+      ansible.builtin.command: git -C /root/.config/zsh remote -v
+      changed_when: false
+      register: zsh_remote
 
-  - name: Register current git remote of /root/.config/zsh
-    ansible.builtin.shell: 'cd /root/.config/zsh; git remote -v'
-    changed_when: false
-    register: shell_git_remote
+    - name: Assert git remote points to local test repo
+      ansible.builtin.assert:
+        that: "'/opt/test-dots-zsh' in zsh_remote.stdout"
 
-  - name: Assert that either a SSH or HTTPS git remote exists on repo
-    ansible.builtin.assert:
-      that: >
-        'git@github.com:marcus-grant/dots-zsh' in shell_git_remote.stdout or
-        'https://github.com/marcus-grant/dots-zsh' in shell_git_remote.stdout
+    - name: Read zshrc shim
+      ansible.builtin.slurp:
+        src: /root/.zshrc
+      register: zshrc_content
 
-  # - name: Register parent directory of zsh git repo for its contents 
-  #   ansible.builtin.command:
-  #     cmd: "ls -a"
-  #     chdir: /root/.config
-  #   register: zsh_config_parent_dir
-  #   changed_when: false
-  #
-  # - name: Assert the backed up zsh dotfile repo exists
-  #   # ansible.builtin.debug: var=zsh_config_parent_dir
-  #   ansible.builtin.assert:
-  #     that: zsh_config_parent_dir.stdout_lines | length > 3
+    - name: Assert zshrc shim sources rc.zsh
+      ansible.builtin.assert:
+        that: "'rc.zsh' in (zshrc_content.content | b64decode)"
 
-  - name: Register stat for zshrc
-    ansible.builtin.stat: path=/root/.zshrc
-    register: zsh_rc
+    - name: Assert zshenv ordering — profile sourced before env.zsh
+      ansible.builtin.shell: |
+        profile_line=$(grep -n 'source $HOME/.profile' /root/.zshenv | head -1 | cut -d: -f1)
+        env_line=$(grep -n 'env.zsh' /root/.zshenv | head -1 | cut -d: -f1)
+        [ "$profile_line" -lt "$env_line" ]
+      changed_when: false
 
-  - name: Register stat for zprofile
-    ansible.builtin.stat: path=/root/.zprofile
-    register: zsh_profile
+    - name: Read zprofile shim
+      ansible.builtin.slurp:
+        src: /root/.zprofile
+      register: zprofile_content
 
-  - name: Register stat for zshenv
-    ansible.builtin.stat: path=/root/.zshenv
-    register: zsh_env
-
-  - name: Assert that all the expected zsh files are linked to the dotfiles
-    ansible.builtin.assert:
-      that:
-        - item.stat.islnk is defined 
-        - item.stat.lnk_target is defined
-        - item.stat.lnk_target == item.dest
-    loop:
-      - { stat: "{{ zsh_rc.stat }}", dest: /root/.config/zsh/rc.zsh }
-      - { stat: "{{ zsh_profile.stat }}", dest: /root/.config/zsh/profile.zsh }
-      - { stat: "{{ zsh_env.stat }}", dest: /root/.config/zsh/env.zsh }
+    - name: Assert zprofile shim sources profile.zsh
+      ansible.builtin.assert:
+        that: "'profile.zsh' in (zprofile_content.content | b64decode)"

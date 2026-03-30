@@ -1,6 +1,4 @@
 ---
-# Prepare play to prepare docker containers,
-# used to bring instance to testable state.
 - name: Prepare
   hosts: all
   tasks:
@@ -10,32 +8,36 @@
         cache_valid_time: 3600
       when: ansible_facts['os_family'] == 'Debian'
 
-    - name: Ensure git is isntalled, expected by role
-      ansible.builtin.package:
-        name: "{{ item }}"
-        state: present
-      loop:
-        - git
-        - curl
-
-    - name: Ensure ~/.config exists
+    - name: Create local test dotfiles repo directory
       ansible.builtin.file:
-        path: ~/.config
+        path: /opt/test-dots-zsh
         state: directory
-        mode: umask
+        mode: '0755'
 
-    - name: Add pre-existing zshrc config file to test overriding/backups
-      ansible.builtin.file:
-        path: "{{ item.path }}"
-        state: "{{ item.state }}"
-        mode: umask
+    - name: Initialize local test dotfiles git repo
+      ansible.builtin.command: git init /opt/test-dots-zsh
+      args:
+        creates: /opt/test-dots-zsh/.git
+
+    - name: Create zsh dotfile fixtures
+      ansible.builtin.copy:
+        dest: "/opt/test-dots-zsh/{{ item }}"
+        content: "# test {{ item }}\n"
+        mode: '0644'
       loop:
-        - { path: ~/.zshrc, state: touch }
-        - { path: ~/.zsh, state: directory }
-        - { path: ~/.zsh/helloworld.txt, state: touch }
-    
-    - name: Clone older commit of zsh dotfiles to test git force/backup
-      ansible.builtin.git:
-        repo: https://github.com/marcus-grant/dots-zsh
-        dest: ~/.config/zsh
-        version: 9a08747e30058d966fbcb9bbe5c3929892272da1
+        - rc.zsh
+        - env.zsh
+        - profile.zsh
+
+    - name: Configure git identity for test repo commit
+      ansible.builtin.command: "{{ item }}"
+      loop:
+        - git -C /opt/test-dots-zsh config user.email test@test.local
+        - git -C /opt/test-dots-zsh config user.name Test
+      changed_when: true
+
+    - name: Commit fixture files to local test repo
+      ansible.builtin.shell: |
+        cd /opt/test-dots-zsh && git add . && git commit -m "fixtures"
+      args:
+        creates: /opt/test-dots-zsh/.git/refs/heads
