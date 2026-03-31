@@ -11,7 +11,7 @@ from ansible_collections.marcus_grant.dotfiles.plugins.modules.dotfiles_git impo
     generate_shim_content,
     place_shim_file,
     place_symlink,
-    git_clone_or_skip,
+    git_clone_or_pull,
     run_module,
 )
 
@@ -148,54 +148,84 @@ class TestPlaceSymlink:
         assert os.path.islink(link)
 
 
-class TestGitCloneOrSkip:
-    REPO = 'https://github.com/marcus-grant/dots-zsh'
+class TestGitCloneOrPull:
+    REPO = 'https://github.com/example/dots-zsh'
 
     @pytest.fixture
     def ok_run(self):
-        return MagicMock(returncode=0, stderr='')
+        return MagicMock(returncode=0, stdout='', stderr='')
 
     @pytest.fixture
     def fail_run(self):
-        return MagicMock(returncode=1, stderr='fatal: repo not found')
+        return MagicMock(returncode=1, stdout='', stderr='fatal: repo not found')
+
+    @pytest.fixture
+    def pull_changed_run(self):
+        return MagicMock(returncode=0, stdout='Updating abc123..def456\n', stderr='')
+
+    @pytest.fixture
+    def pull_noop_run(self):
+        return MagicMock(returncode=0, stdout='Already up to date.\n', stderr='')
 
     def test_no_git_dir_triggers_clone(self, tmp_path, ok_run):
         dest = str(tmp_path / 'zsh')
         with patch('subprocess.run', return_value=ok_run) as mock_run:
-            cloned = git_clone_or_skip(self.REPO, dest, 'HEAD', False)
-        assert cloned is True
+            result = git_clone_or_pull(self.REPO, dest, 'HEAD', False, False)
+        assert result is True
         assert 'clone' in mock_run.call_args[0][0]
 
-    def test_existing_git_dir_skips_clone(self, tmp_path):
+    def test_existing_git_dir_update_false_skips(self, tmp_path):
         dest = tmp_path / 'zsh'
         (dest / '.git').mkdir(parents=True)
         with patch('subprocess.run') as mock_run:
-            cloned = git_clone_or_skip(self.REPO, str(dest), 'HEAD', False)
-        assert cloned is False
+            result = git_clone_or_pull(self.REPO, str(dest), 'HEAD', False, False)
+        assert result is False
         mock_run.assert_not_called()
+
+    def test_existing_git_dir_update_true_pulls(self, tmp_path, pull_changed_run):
+        dest = tmp_path / 'zsh'
+        (dest / '.git').mkdir(parents=True)
+        with patch('subprocess.run', return_value=pull_changed_run) as mock_run:
+            result = git_clone_or_pull(self.REPO, str(dest), 'HEAD', False, True)
+        assert result is True
+        assert 'pull' in mock_run.call_args[0][0]
+
+    def test_pull_already_up_to_date_returns_false(self, tmp_path, pull_noop_run):
+        dest = tmp_path / 'zsh'
+        (dest / '.git').mkdir(parents=True)
+        with patch('subprocess.run', return_value=pull_noop_run):
+            result = git_clone_or_pull(self.REPO, str(dest), 'HEAD', False, True)
+        assert result is False
 
     def test_force_reclones_existing(self, tmp_path, ok_run):
         dest = tmp_path / 'zsh'
         (dest / '.git').mkdir(parents=True)
         with patch('subprocess.run', return_value=ok_run), \
              patch('shutil.rmtree') as mock_rm:
-            cloned = git_clone_or_skip(self.REPO, str(dest), 'HEAD', True)
-        assert cloned is True
+            result = git_clone_or_pull(self.REPO, str(dest), 'HEAD', True, False)
+        assert result is True
         mock_rm.assert_called_once_with(dest)
 
     def test_force_on_missing_dest_skips_rmtree(self, tmp_path, ok_run):
         dest = str(tmp_path / 'zsh')
         with patch('subprocess.run', return_value=ok_run), \
              patch('shutil.rmtree') as mock_rm:
-            cloned = git_clone_or_skip(self.REPO, dest, 'HEAD', True)
-        assert cloned is True
+            result = git_clone_or_pull(self.REPO, dest, 'HEAD', True, False)
+        assert result is True
         mock_rm.assert_not_called()
 
     def test_clone_failure_raises(self, tmp_path, fail_run):
         dest = str(tmp_path / 'zsh')
         with patch('subprocess.run', return_value=fail_run):
             with pytest.raises(RuntimeError):
-                git_clone_or_skip(self.REPO, dest, 'HEAD', False)
+                git_clone_or_pull(self.REPO, dest, 'HEAD', False, False)
+
+    def test_pull_failure_raises(self, tmp_path, fail_run):
+        dest = tmp_path / 'zsh'
+        (dest / '.git').mkdir(parents=True)
+        with patch('subprocess.run', return_value=fail_run):
+            with pytest.raises(RuntimeError):
+                git_clone_or_pull(self.REPO, str(dest), 'HEAD', False, True)
 
 
 class TestRunModule:
@@ -209,6 +239,7 @@ class TestRunModule:
             'dest': '/root/.config/zsh',
             'version': 'HEAD',
             'force': False,
+            'update': False,
             'files': [],
         }
         return m
@@ -222,22 +253,22 @@ class TestRunModule:
         ):
             yield module
 
-    def test_calls_git_clone_or_skip(self, ansible_module_mock):
+    def test_calls_git_clone_or_pull(self, ansible_module_mock):
         with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
-                   '.dotfiles_git.git_clone_or_skip', return_value=False) as mock_git:
+                   '.dotfiles_git.git_clone_or_pull', return_value=False) as mock_git:
             run_module()
-        mock_git.assert_called_once_with(self.REPO, '/root/.config/zsh', 'HEAD', False)
+        mock_git.assert_called_once_with(self.REPO, '/root/.config/zsh', 'HEAD', False, False)
 
     def test_changed_true_when_cloned(self, ansible_module_mock):
         with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
-                   '.dotfiles_git.git_clone_or_skip', return_value=True):
+                   '.dotfiles_git.git_clone_or_pull', return_value=True):
             run_module()
         ansible_module_mock.exit_json.assert_called_once()
         assert ansible_module_mock.exit_json.call_args[1]['changed'] is True
 
     def test_changed_false_when_nothing_changed(self, ansible_module_mock):
         with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
-                   '.dotfiles_git.git_clone_or_skip', return_value=False):
+                   '.dotfiles_git.git_clone_or_pull', return_value=False):
             run_module()
         assert ansible_module_mock.exit_json.call_args[1]['changed'] is False
 
@@ -247,7 +278,7 @@ class TestRunModule:
             'method': 'shim', 'mode': '0600', 'prepend_lines': [],
         }]
         with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
-                   '.dotfiles_git.git_clone_or_skip', return_value=False), \
+                   '.dotfiles_git.git_clone_or_pull', return_value=False), \
              patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
                    '.dotfiles_git.place_shim_file', return_value=(False, None)) as mock_shim:
             run_module()
@@ -259,7 +290,7 @@ class TestRunModule:
             'method': 'symlink', 'mode': '0600', 'prepend_lines': [],
         }]
         with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
-                   '.dotfiles_git.git_clone_or_skip', return_value=False), \
+                   '.dotfiles_git.git_clone_or_pull', return_value=False), \
              patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
                    '.dotfiles_git.place_symlink', return_value=False) as mock_link:
             run_module()
@@ -267,7 +298,7 @@ class TestRunModule:
 
     def test_fail_json_called_on_clone_error(self, ansible_module_mock):
         with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
-                   '.dotfiles_git.git_clone_or_skip',
+                   '.dotfiles_git.git_clone_or_pull',
                    side_effect=RuntimeError('git clone failed: fatal')):
             run_module()
         ansible_module_mock.fail_json.assert_called_once()
@@ -279,7 +310,7 @@ class TestRunModule:
         }]
         diff = {'path': '/root/.zshrc', 'before': '', 'after': 'source ...'}
         with patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
-                   '.dotfiles_git.git_clone_or_skip', return_value=False), \
+                   '.dotfiles_git.git_clone_or_pull', return_value=False), \
              patch('ansible_collections.marcus_grant.dotfiles.plugins.modules'
                    '.dotfiles_git.place_shim_file', return_value=(True, diff)):
             run_module()

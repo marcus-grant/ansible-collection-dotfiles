@@ -193,12 +193,17 @@ def place_symlink(link_path, target_path):
     return True
 
 
-def git_clone_or_skip(repo, dest, version, force):
+def git_clone_or_pull(repo, dest, version, force, update):
     dest = Path(dest).expanduser()
     already_cloned = (dest / '.git').is_dir()
 
     if already_cloned and not force:
-        return False
+        if not update:
+            return False
+        result = subprocess.run(['git', '-C', str(dest), 'pull'], capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f'git pull failed: {result.stderr}')
+        return 'Already up to date.' not in result.stdout
 
     if already_cloned:
         shutil.rmtree(dest)
@@ -235,6 +240,7 @@ def run_module():
             dest=dict(type='str', required=True),
             version=dict(type='str', default='HEAD'),
             force=dict(type='bool', default=False),
+            update=dict(type='bool', default=False),
             files=dict(type='list', elements='dict', default=[], options=_FILE_SPEC),
         ),
         supports_check_mode=False,
@@ -244,11 +250,12 @@ def run_module():
     dest = module.params['dest']
     version = module.params['version']
     force = module.params['force']
+    update = module.params['update']
     files = module.params['files']
 
     cloned = False
     try:
-        cloned = git_clone_or_skip(repo, dest, version, force)
+        cloned = git_clone_or_pull(repo, dest, version, force, update)
     except RuntimeError as exc:
         module.fail_json(msg=str(exc))
 
