@@ -32,6 +32,7 @@
     dest: "{{ zsh_config_dest }}"
     version: "{{ zsh_git_version }}"
     force: "{{ zsh_git_force }}"
+    update: "{{ zsh_git_update }}"
     files:
       - src: "{{ zsh_rc_file }}"
         dest: "~/.zshrc"
