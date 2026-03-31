@@ -23,6 +23,7 @@ the locations ZSH expects them, and optionally sets ZSH as the default shell.
 | `zsh_env_source_profile` | no | `true` | Prepend `source $HOME/.profile` in `~/.zshenv` shim |
 | `zsh_git_version` | no | `HEAD` | Branch, tag, or commit to check out |
 | `zsh_git_force` | no | `false` | Re-clone even if destination already exists |
+| `zsh_git_update` | no | `false` | Pull latest commits on each run; reports `changed` if new commits fetched |
 | `zsh_shell_as_default` | no | `false` | Set ZSH as the login shell for the ansible user |
 | `zsh_default_shell_path` | no | `/usr/bin/zsh` | ZSH binary path used when setting default shell |
 | `zsh_extra_packages` | no | `[]` | Additional packages to install alongside ZSH |

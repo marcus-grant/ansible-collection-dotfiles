@@ -98,10 +98,11 @@ Full parameter reference: `ansible-doc marcus_grant.dotfiles.dotfiles_git`
 
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
-| `repo` | yes | — | Git repository URL |
+| `repo` | yes | — | Git repository URL. Supports HTTPS and SSH (SSH requires keys on target host). |
 | `dest` | yes | — | Clone destination (tilde expanded) |
 | `version` | no | `HEAD` | Git ref to check out |
 | `force` | no | `false` | Delete and re-clone even if repo exists |
+| `update` | no | `false` | Run `git pull` on existing clone; reports `changed` if commits were fetched |
 | `files` | no | `[]` | List of file placement mappings (see below) |
 
 Each entry in `files`:

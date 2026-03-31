@@ -36,6 +36,14 @@ options:
       - When C(true), delete and re-clone C(dest) even if it already contains a git repo.
     type: bool
     default: false
+  update:
+    description:
+      - When C(true), run C(git pull) on an existing clone and report C(changed) if new
+        commits were fetched.
+      - When C(false) (default), an existing clone is left untouched. Use this when the
+        repo is treated as a versioned install that should not change between runs.
+    type: bool
+    default: false
   files:
     description: List of file placement mappings.
     type: list
