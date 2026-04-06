@@ -68,6 +68,77 @@ After this role runs, the target will have:
 ~/.ssh/id_ed25519_personal    0600  marcus:marcus
 ```
 
+## Playbook Integration
+
+### Version
+
+Introduced in `marcus_grant.dotfiles` **1.3.0**.
+
+### Installation
+
+```bash
+ansible-galaxy collection install marcus_grant.dotfiles:>=1.3.0
+```
+
+### Ordering
+
+`ssh_keys` must run **before** any role that clones a git repository over
+an SSH URL. It has no Ansible role dependencies — schedule it by task
+ordering in the play, not via `dependencies`.
+
+Recommended sequence:
+
+```
+ssh_keys → (roles that clone via SSH) → ssh_config → ssh_authorize
+```
+
+### Minimal example
+
+```yaml
+- hosts: workstations
+  become: true
+  roles:
+    - role: marcus_grant.dotfiles.ssh_keys
+      vars:
+        ssh_keys_owner: marcus
+        ssh_keys_pairs:
+          - src: ~/.ssh/id_ed25519_git
+```
+
+### Full example
+
+```yaml
+- hosts: workstations
+  become: true
+  roles:
+    - role: marcus_grant.dotfiles.ssh_keys
+      vars:
+        ssh_keys_owner: marcus
+        ssh_keys_pairs:
+          - src: ~/.ssh/id_ed25519_git
+            name: id_ed25519_git
+          - src: ~/.ssh/id_ed25519_personal
+            name: id_ed25519_personal
+    - role: marcus_grant.dotfiles.zsh
+      vars:
+        zsh_git_repo: git@github.com:marcus/dots-zsh.git
+```
+
+### Key paths on the control node
+
+`src` is evaluated on the **control node** (the machine running
+`ansible-playbook`), not on the target. Both absolute paths and
+`~`-expanded paths are supported. The `.pub` file is optional — if it
+does not exist at `src + ".pub"` the role skips it without error.
+
+### Security notes
+
+- Private key content is never logged (`no_log: true` throughout)
+- `~/.ssh/` is created `0700`; private keys land `0600`; public keys `0644`
+- All files are owned by `ssh_keys_owner`, not `root`
+- The role does **not** generate keys, modify `authorized_keys`, or touch
+  `~/.ssh/config` — those are separate concerns
+
 ## License
 
 GPL-2.0-or-later
