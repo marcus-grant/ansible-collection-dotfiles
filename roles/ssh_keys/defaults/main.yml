@@ -1,0 +1,4 @@
+---
+# defaults file for ssh_keys
+ssh_keys_owner: "{{ ansible_user_id }}"
+ssh_keys_pairs: []

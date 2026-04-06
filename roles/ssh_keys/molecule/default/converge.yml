@@ -1,0 +1,16 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Apply ssh_keys role
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.ssh_keys
+      vars:
+        ssh_keys_owner: testuser
+        ssh_keys_pairs:
+          - src: /tmp/molecule-ssh-keys/id_test_full
+            name: id_test_full
+          - src: /tmp/molecule-ssh-keys/id_test_nopub
+            name: id_test_nopub

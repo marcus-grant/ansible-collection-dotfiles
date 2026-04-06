@@ -1,0 +1,46 @@
+---
+- name: Prepare control node fixtures
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Create temp directory for test SSH keys
+      ansible.builtin.file:
+        path: /tmp/molecule-ssh-keys
+        state: directory
+        mode: '0700'
+
+    - name: Create dummy private key (full pair)
+      ansible.builtin.copy:
+        dest: /tmp/molecule-ssh-keys/id_test_full
+        content: "DUMMY PRIVATE KEY CONTENT\n"
+        mode: '0600'
+
+    - name: Create dummy public key (full pair)
+      ansible.builtin.copy:
+        dest: /tmp/molecule-ssh-keys/id_test_full.pub
+        content: "ssh-ed25519 AAAADUMMYKEY id_test_full\n"
+        mode: '0644'
+
+    - name: Create dummy private key (no pub)
+      ansible.builtin.copy:
+        dest: /tmp/molecule-ssh-keys/id_test_nopub
+        content: "DUMMY PRIVATE KEY NOPUB\n"
+        mode: '0600'
+
+- name: Prepare target hosts
+  hosts: all
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    - name: Update apt cache on Debian family
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Create test user with home directory
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true

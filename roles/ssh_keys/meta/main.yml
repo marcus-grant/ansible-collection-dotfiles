@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  role_name: ssh_keys
+  author: marcus_grant
+  description: >
+    Deploy SSH key pairs from the Ansible control node to target hosts.
+    Sets correct ownership and permissions. Nothing else.
+  issue_tracker_url: https://github.com/marcus-grant/ansible-collection-dotfiles/issues
+  license: GPL-2.0-or-later
+  min_ansible_version: '2.1'
+  platforms: []
+  galaxy_tags:
+    - dotfiles
+    - ssh
+    - security
+    - keys
+
+dependencies: []
