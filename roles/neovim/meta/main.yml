@@ -3,28 +3,20 @@ galaxy_info:
   role_name: neovim
   author: marcus_grant
   description: |
-    A role to clone a git-controlled directory containing neovim dotfiles,
-    then linking them and being able to pull new changes in the future.
+    Install neovim and clone a git-controlled config repo to ~/.config/nvim
+    via the dotfiles_git module. Supports package manager and appimage install methods.
   issue_tracker_url: https://github.com/marcus-grant/ansible-collection-dotfiles/issues
   license: GPL-2.0-or-later
 
   min_ansible_version: '2.1'
 
-  # platforms:
-  #   - name: Debian
-  #     versions:
-  #       - 10
-  #       - 11
-  #   - name: EL
-  #     versions:
-  #       - 7
-  #       - 8
-  #   - name: Fedora
-  #     versions:
-  #       - all
-  #   - name: Archlinux
-  #     versions:
-  #       - all
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+    - name: Archlinux
+      versions:
+        - all
 
   galaxy_tags:
     - dotfiles

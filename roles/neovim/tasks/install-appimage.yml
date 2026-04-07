@@ -1,8 +1,41 @@
 ---
-# install-appimage.yml tasks file for dotfiles.neovim
-# installs neovim via appimage download, placement, permissions & configs
-- name: install-appimage | Download appimage
+# install-appimage.yml tasks file for marcus_grant.dotfiles.neovim
+- name: install-appimage | Install FUSE dependencies
+  become: true
+  become_user: root
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ neovim_appimage_fuse_packages[ansible_os_family] }}"
+
+- name: install-appimage | Check current nvim version
+  ansible.builtin.command: "{{ neovim_appimage_dest_abs }}/{{ neovim_appimage_name }} --version"
+  register: neovim_appimage_installed
+  changed_when: false
+  failed_when: false
+
+- name: install-appimage | Set version-current fact
+  ansible.builtin.set_fact:
+    _neovim_appimage_current: >-
+      {{ neovim_appimage_installed.rc == 0 and
+         neovim_appimage_version in neovim_appimage_installed.stdout }}
+
+- name: install-appimage | Ensure appimage dest directory exists
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ neovim_appimage_dest_abs }}"
+    state: directory
+    owner: "{{ neovim_owner }}"
+    mode: '0755'
+  when: not _neovim_appimage_current
+
+- name: install-appimage | Download neovim appimage
+  become: true
+  become_user: "{{ neovim_owner }}"
   ansible.builtin.get_url:
     url: "{{ neovim_appimage_url }}"
-    dest: "{{ neovim_appimage_dest }}"
-    mode: "0775"
+    dest: "{{ neovim_appimage_dest_abs }}/{{ neovim_appimage_name }}"
+    mode: '0755'
+    force: true
+  when: not _neovim_appimage_current

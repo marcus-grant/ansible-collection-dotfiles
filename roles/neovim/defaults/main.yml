@@ -1,10 +1,15 @@
 ---
-# defaults file for zsh
-neovim_pkgs_extra: []
-neovim_config_dir: ~/.config/nvim
-neovim_install_method: package # appimage,tar,compile
-neovim_alt_pkg: ""
-neovim_appimage_dest: /usr/local/bin
-neovim_appimage_url: https://github.com/neovim/neovim/releases/download/v0.9.5/nvim.appimage
-neovim_git_vers: HEAD
-neovim_git_force: false
+# defaults file for marcus_grant.dotfiles.neovim
+neovim_install_method: package          # package | appimage
+neovim_appimage_version: v0.12.1
+neovim_appimage_dest: ~/.local/bin      # ~ resolved against neovim_home in tasks
+neovim_appimage_name: nvim
+neovim_appimage_url: >-
+  https://github.com/neovim/neovim-releases/releases/download/{{
+  neovim_appimage_version }}/nvim-linux-x86_64.appimage
+neovim_alt_pkg: ""                      # override package name for install-package.yml
+neovim_git_repo: ""
+neovim_git_version: main
+neovim_git_update: false
+neovim_owner: "{{ ansible_user_id }}"
+neovim_extra_packages: []

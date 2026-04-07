@@ -1,60 +1,47 @@
 ---
-# main tasks file for marcus_grant.dotfiles.neovim
-# TODO - SET THE EDITOR VAR WHEN PROFILE ROLE SUPPORTS profile.d loading
-# TODO - Consider adding appimage install method for debian
-# - name: Install AppImage dependencies (Debian)
-#   become: true
-#   become_user: root
-#   ansible.builtin.apt:
-#     name: "{{ neovim_deb_pkg }}"
-#   loop_control: {loop_var: neovim_deb_pkg}
-#   loop: >-
-#     [build-essential, libjpeg-dev, libpng-dev, libtiff-dev,
-#     fuse libc6 libcairo2 libgdk-pixbuf2.0-0 libgl1 libgtk2.0-0 libfuse2]
-#   when: ansible_os_family == 'Debian'
-- name: Import install task file based off neovim_install_method
-  ansible.builtin.import_tasks: "install-{{ neovim_install_method }}.yml"
+# tasks file for marcus_grant.dotfiles.neovim
+- name: Resolve home directory for neovim_owner
+  ansible.builtin.command: "getent passwd {{ neovim_owner }}"
+  register: neovim_getent
+  changed_when: false
 
-- name: Install neovim packages + extras via package manager (*nix NOT deb)
+- name: Set neovim_home fact
+  ansible.builtin.set_fact:
+    neovim_home: "{{ neovim_getent.stdout.split(':')[5] }}"
+
+- name: Set neovim_appimage_dest_abs fact
+  ansible.builtin.set_fact:
+    neovim_appimage_dest_abs: "{{ neovim_appimage_dest | replace('~/', neovim_home + '/') }}"
+
+- name: Include install tasks for neovim_install_method
+  ansible.builtin.include_tasks: "install-{{ neovim_install_method }}.yml"
+
+- name: Install extra packages
   become: true
   become_user: root
   ansible.builtin.package:
-    name: "{{ neovim_packages }}"
+    name: "{{ item }}"
     state: present
-  loop_control: {loop_var: neovim_packages}
-  loop: "{{ neovim_pkgs_extra }}"
-  when: ansible_os_family != 'Darwin'
+  loop: "{{ neovim_extra_packages }}"
+  when: neovim_extra_packages | length > 0
 
-- name: Install neovim packages + extras via package manager (macOS)
-  ansible.builtin.package:
-    name: "{{ neovim_packages }}"
-    state: present
-  loop_control: {loop_var: neovim_packages}
-  loop: "{{ neovim_pkgs_extra }}"
-  when: ansible_os_family == 'Darwin'
-
-- name: Ensure neovim config directory (PARENT) exists
+- name: Ensure config parent directory exists
+  become: true
+  become_user: root
   ansible.builtin.file:
-    path: "{{ neovim_config_dir | dirname }}"
+    path: "{{ neovim_home }}/.config"
     state: directory
-    owner: "{{ ansible_user_id }}"
-    mode: 0750
+    owner: "{{ neovim_owner }}"
+    group: "{{ neovim_owner }}"
+    mode: '0750'
 
-- name: Register stat of neovim config directory's git sub-directory
-  ansible.builtin.stat:
-    path: "{{ neovim_config_dir }}/.git"
-  register: neovim_git_dir
-  when:
-    - neovim_git_repo is defined
-    - neovim_git_repo | length > 0
-
-- name: Clone neovim dotfiles repository to neovim config directory
-  ansible.builtin.git:
+- name: Clone neovim config repo
+  become: true
+  become_user: "{{ neovim_owner }}"
+  marcus_grant.dotfiles.dotfiles_git:
     repo: "{{ neovim_git_repo }}"
-    version: "{{ neovim_git_vers }}"
-    force: "{{ neovim_git_force }}"
-    dest: "{{ neovim_config_dir }}"
-  when:
-    - neovim_git_repo is defined
-    - neovim_git_repo | length > 0
-    - not neovim_git_dir.stat.exists or neovim_git_force
+    dest: "{{ neovim_home }}/.config/nvim"
+    version: "{{ neovim_git_version }}"
+    update: "{{ neovim_git_update }}"
+    files: []
+  when: neovim_git_repo | length > 0

@@ -1,13 +1,14 @@
 ---
 - name: Converge
   hosts: all
+  become: true
+  become_user: root
   tasks:
-    - name: "Include neovim"
-      vars:
-        nvim_git_repo: https://github.com/marcus-grant/dots-neovim4
-        nvim_git_force: true
-        nvim_appimage: true
-        nvim_version: v0.7.0
-        # nvim_checksum: 9cf2b7cc268c9df1670ae8d95bd6420dbe12b9aa07f852e6364c64305b91c711
+    - name: Apply neovim role
       ansible.builtin.include_role:
-        name: "neovim"
+        name: marcus_grant.dotfiles.neovim
+      vars:
+        neovim_owner: testuser
+        neovim_install_method: package
+        neovim_git_repo: /opt/test-dots-nvim
+        neovim_git_version: main

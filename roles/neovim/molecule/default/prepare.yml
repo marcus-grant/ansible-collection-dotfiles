@@ -1,41 +1,49 @@
 ---
-# Prepare play to prepare docker containers,
-# used to bring instance to testable state.
 - name: Prepare
   hosts: all
+  gather_facts: true
+  become: true
+  become_user: root
   tasks:
-    - name: Update apt cache on Debian family OSs
+    - name: Update apt cache (Debian)
       ansible.builtin.apt:
         update_cache: true
         cache_valid_time: 3600
       when: ansible_facts['os_family'] == 'Debian'
 
-    - name: Ensure git is isntalled, expected by role
+    - name: Install git
       ansible.builtin.package:
-        name: "{{ item }}"
+        name: git
         state: present
-      loop:
-        - git
-        - curl
 
-    - name: Ensure ~/.config exists
+    - name: Create testuser with home
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true
+
+    - name: Create fixture repo directory
       ansible.builtin.file:
-        path: ~/.config
+        path: /opt/test-dots-nvim
         state: directory
-        mode: umask
+        mode: '0755'
 
-    # - name: Add pre-existing zshrc config file to test overriding/backups
-    #   ansible.builtin.file:
-    #     path: "{{ item.path }}"
-    #     state: "{{ item.state }}"
-    #     mode: umask
-    #   loop:
-    #     - { path: ~/.zshrc, state: touch }
-    #     - { path: ~/.zsh, state: directory }
-    #     - { path: ~/.zsh/helloworld.txt, state: touch }
-    
-    - name: Clone older commit of zsh dotfiles to test git force/backup
-      ansible.builtin.git:
-        repo: https://github.com/marcus-grant/dots-neovim4
-        dest: ~/.config/nvim
-        version: 72fb05acda73b005b1bb8b7003caa1b6a972a3f2
+    - name: Init fixture git repo with minimal config
+      ansible.builtin.shell: |
+        git init /opt/test-dots-nvim
+        git -C /opt/test-dots-nvim config user.email test@test.local
+        git -C /opt/test-dots-nvim config user.name Test
+        touch /opt/test-dots-nvim/init.lua
+        git -C /opt/test-dots-nvim add .
+        git -C /opt/test-dots-nvim commit -m "fixtures"
+        git -C /opt/test-dots-nvim branch -M main
+      args:
+        creates: /opt/test-dots-nvim/.git
+
+    - name: Own fixture repo by testuser so git clone as testuser succeeds
+      ansible.builtin.file:
+        path: /opt/test-dots-nvim
+        owner: testuser
+        group: testuser
+        recurse: true
+        state: directory

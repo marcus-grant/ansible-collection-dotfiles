@@ -1,76 +1,72 @@
-# Neovim Dotfiles Role
+# Neovim Role — `marcus_grant.dotfiles`
 
-Install neovim and manage its dotfiles via git.
+Install neovim and clone a git-controlled config repo to `~/.config/nvim`
+using the `dotfiles_git` module. Supports package manager and appimage
+install methods.
 
 ## Requirements
 
-Only git.
+- `git` on the target host
+- SSH key deployed (via `ssh_keys` role) if `neovim_git_repo` is an SSH URL
 
 ## Role Variables
 
-Below is a table of variables,
-defaults are listed here as they appear in `defaults/main.yml`.
+| Variable | Default | Comments |
+| -------- | ------- | -------- |
+| `neovim_owner` | `{{ ansible_user_id }}` | User who owns the config and binary |
+| `neovim_install_method` | `package` | `package` or `appimage` |
+| `neovim_extra_packages` | `[]` | Extra packages installed alongside neovim (e.g. ripgrep, tree-sitter) |
+| `neovim_git_repo` | `""` | SSH or HTTPS URL of the neovim config repo. Clone is skipped if empty. |
+| `neovim_git_version` | `main` | Branch, tag, or commit to check out |
+| `neovim_git_update` | `false` | Pull on subsequent runs when `true` |
+| `neovim_appimage_version` | `v0.12.1` | Version string to download and version-check against |
+| `neovim_appimage_dest` | `~/.local/bin` | Directory to place the appimage binary (`~` expands to `neovim_owner`'s home) |
+| `neovim_appimage_name` | `nvim` | Filename of the placed binary |
+| `neovim_appimage_url` | GitHub releases URL | Override to use a local or mirror URL (useful in tests) |
+| `neovim_alt_pkg` | `""` | Override the package name for the `package` install method |
 
-| Variable          | Default          | Choices   | Comments                                         |
-| ----------------- | ---------------- | --------- | ------------------------------------------------ |
-| neovim_pkgs_extra | `[]`             | Packages  | List of extra packages to install.               |
-| neovim_config_dir | `~/.config/nvim` | Dir path  | Path string where nvim configs should go.        |
-| neovim_git_repo   | `''`             | Repo URL  | URL to dotfile git repo, doesn't pull if absent. |
-| neovim_git_vers   | `HEAD`           | Git vers. | Git version string of dotfile repo to clone.     |
-| neovim_git_force  | `false`          | Bool      | If to force git pull if directory is present.    |
+### Notes
 
-### Role Variables - Extra Notes
-
-* `neovim_pkgs_extra`:
-  * This is a list of extra packages to install with system package manager.
-  * This is useful for installing language servers and other plugins.
-  * In my case I always use neovim with `fzf`, `ripgrep`, `fd` and `tree-sitter`.
-* `neovim_git_repo`:
-  * Not providing a value for this will skip any task involved in
-    cloning the dotfile repo into the `neovim_config_dir`.
-* `neovim_git_vers`:
-  * This corresponds to the git version string to use to
-    clone or pull the dotfile repo.
-  * This includes branch names, tags, and commit hashes.
-  * The default `HEAD` will always pull the latest changes.
-* `neovim_git_force`:
-  * Corresponds to Ansible's
-    [`ansible.builtin.git`][ansible.builtin.git] `force` parameter.
-  * If something is already present at `neovim_config_dir`
-    and this is set to `true` then the dotfile repo will be
-    force pulled.
-  * Can cause loss of data in the local configuration repository if
-    the remote repository has been updated since the last pull.
-
-## Dependencies
-
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+- `neovim_git_repo`: required for config clone. Use an SSH URL when the
+  target has a key deployed; HTTPS for public repos.
+- `neovim_git_update`: set to `true` only if you want the role to pull
+  new commits on every run. Defaults to `false` to treat the clone as a
+  versioned install.
+- `neovim_appimage_url`: defaults to the GitHub releases template using
+  `neovim_appimage_version`. Override in tests or to use a mirror:
+  ```yaml
+  neovim_appimage_url: file:///opt/local-nvim.appimage
+  ```
+- AppImage install requires FUSE on the target. FUSE packages installed
+  automatically: `libfuse2` (Debian), `fuse2` (Arch). The binary itself
+  is NOT executed by the role — FUSE is only needed when you run nvim.
 
 ## Example Playbook
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
 ```yaml
-- hosts: all
-  vars:
-    neovim_git_repo: git@github.com:marcus-grant/dots-neovim.git
-    neovim_pkgs_extra: [fzf, ripgrep, fd, tree-sitter]
-    neovim_config_dir: ~/.config/nvim
-    neovim_git_vers: HEAD
-    neovim_git_force: false
+- hosts: workstations
   roles:
     - role: marcus_grant.dotfiles.neovim
+      vars:
+        neovim_owner: marcus
+        neovim_install_method: appimage
+        neovim_appimage_version: v0.12.1
+        neovim_git_repo: git@github.com:marcus-grant/dots-neovim.git
+        neovim_git_version: main
+        neovim_extra_packages:
+          - ripgrep
+          - fd
+          - tree-sitter
 ```
+
+## Dependencies
+
+None. Intended to run after `ssh_keys` when using an SSH git repo URL.
 
 ## License
 
-GPL3
+GPL-2.0-or-later
 
-## Author Information
+## Author
 
-Marcus Grant
-[https://marcusgrant.me](https://marcusgrant.me)
-[marcusfg@protonmail.com](marcusfg@pm.me)
-
-<!-- Reference Links -->
-[ansible.builtin.git]: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/git_module.html "Ansible Module Documentation: ansible.builtin.git"
+Marcus Grant — [marcusgrant.me](https://marcusgrant.me)

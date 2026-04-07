@@ -1,2 +1,7 @@
 ---
 # vars file for marcus_grant.dotfiles.neovim
+neovim_appimage_fuse_packages:
+  Debian:
+    - libfuse2
+  Archlinux:
+    - fuse2

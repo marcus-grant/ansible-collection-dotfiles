@@ -1,69 +1,55 @@
 ---
-# This is an example playbook to execute Ansible tests.
 - name: Verify
   hosts: all
   gather_facts: false
   tasks:
+    - name: Resolve testuser home directory
+      ansible.builtin.command: getent passwd testuser
+      register: neovim_verify_getent
+      changed_when: false
 
-  - name: Check installed packages ansible fact
-    ansible.builtin.package_facts:
-      manager: auto
+    - name: Set neovim_verify_home fact
+      ansible.builtin.set_fact:
+        neovim_verify_home: "{{ neovim_verify_getent.stdout.split(':')[5] }}"
 
-  # - name: Assert neovim is installed
-  #   ansible.builtin.assert:
-  #     that: ansible_facts.packages['neovim']
+    - name: Check nvim version
+      ansible.builtin.command: nvim --version
+      register: neovim_verify_version
+      changed_when: false
 
-  - name: Register stat module for default nvim_config_dir at /root/.config/nvim
-    ansible.builtin.stat:
-      path: /root/.config/nvim
-    register: nvim_path
+    - name: Assert nvim is installed
+      ansible.builtin.assert:
+        that: neovim_verify_version.rc == 0
 
-  - name: Assert that nvim_path exists as directory
-    ansible.builtin.assert:
-      that: nvim_path.stat.isdir
+    - name: Stat config dir
+      ansible.builtin.stat:
+        path: "{{ neovim_verify_home }}/.config/nvim"
+      register: neovim_verify_dir
 
-  - name: Register current git remote of /root/.config/nvim
-    ansible.builtin.shell: 'cd /root/.config/nvim; git remote -v'
-    changed_when: false
-    register: shell_git_remote
+    - name: Assert config dir exists and is owned by testuser
+      ansible.builtin.assert:
+        that:
+          - neovim_verify_dir.stat.exists
+          - neovim_verify_dir.stat.isdir
+          - neovim_verify_dir.stat.pw_name == 'testuser'
 
-  - name: Assert that either a SSH or HTTPS git remote exists on repo
-    ansible.builtin.assert:
-      that: >
-        'git@github.com:marcus-grant/dots-neovim4' in shell_git_remote.stdout or
-        'https://github.com/marcus-grant/dots-neovim4' in shell_git_remote.stdout
-  #
-  # # - name: Register parent directory of zsh git repo for its contents
-  # #   ansible.builtin.command:
-  # #     cmd: "ls -a"
-  # #     chdir: /root/.config
-  # #   register: zsh_config_parent_dir
-  # #   changed_when: false
-  # #
-  # # - name: Assert the backed up zsh dotfile repo exists
-  # #   # ansible.builtin.debug: var=zsh_config_parent_dir
-  # #   ansible.builtin.assert:
-  # #     that: zsh_config_parent_dir.stdout_lines | length > 3
-  #
-  # - name: Register stat for zshrc
-  #   ansible.builtin.stat: path=/root/.zshrc
-  #   register: zsh_rc
-  #
-  # - name: Register stat for zprofile
-  #   ansible.builtin.stat: path=/root/.zprofile
-  #   register: zsh_profile
-  #
-  # - name: Register stat for zshenv
-  #   ansible.builtin.stat: path=/root/.zshenv
-  #   register: zsh_env
-  #
-  # - name: Assert that all the expected zsh files are linked to the dotfiles
-  #   ansible.builtin.assert:
-  #     that:
-  #       - item.stat.islnk is defined
-  #       - item.stat.lnk_target is defined
-  #       - item.stat.lnk_target == item.dest
-  #   loop:
-  #     - { stat: "{{ zsh_rc.stat }}", dest: /root/.config/zsh/rc.zsh }
-  #     - { stat: "{{ zsh_profile.stat }}", dest: /root/.config/zsh/profile.zsh }
-  #     - { stat: "{{ zsh_env.stat }}", dest: /root/.config/zsh/env.zsh }
+    - name: Stat init.lua
+      ansible.builtin.stat:
+        path: "{{ neovim_verify_home }}/.config/nvim/init.lua"
+      register: neovim_verify_init
+
+    - name: Assert init.lua present from fixture
+      ansible.builtin.assert:
+        that: neovim_verify_init.stat.exists
+
+    - name: Check git remote of config dir
+      become: true
+      become_user: testuser
+      ansible.builtin.command: >-
+        git -C {{ neovim_verify_home }}/.config/nvim remote -v
+      register: neovim_verify_remote
+      changed_when: false
+
+    - name: Assert git remote matches fixture repo
+      ansible.builtin.assert:
+        that: "'/opt/test-dots-nvim' in neovim_verify_remote.stdout"

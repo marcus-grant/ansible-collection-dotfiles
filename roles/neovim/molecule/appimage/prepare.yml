@@ -1,0 +1,54 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Create testuser with home
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true
+
+    - name: Resolve testuser home
+      ansible.builtin.command: getent passwd testuser
+      register: _prep_getent
+      changed_when: false
+
+    - name: Set testuser_home fact
+      ansible.builtin.set_fact:
+        testuser_home: "{{ _prep_getent.stdout.split(':')[5] }}"
+
+    - name: Create fake appimage for target version (v0.12.1)
+      ansible.builtin.copy:
+        dest: /opt/fake-nvim-v0.12.1.appimage
+        mode: '0755'
+        content: |
+          #!/bin/sh
+          case "$1" in
+            --version) printf 'NVIM v0.12.1\n'; exit 0 ;;
+          esac
+
+    - name: Ensure testuser local bin directory exists
+      ansible.builtin.file:
+        path: "{{ testuser_home }}/.local/bin"
+        state: directory
+        owner: testuser
+        mode: '0755'
+
+    - name: Pre-install old fake nvim (v0.11.0) to force version mismatch
+      ansible.builtin.copy:
+        dest: "{{ testuser_home }}/.local/bin/nvim"
+        owner: testuser
+        mode: '0755'
+        content: |
+          #!/bin/sh
+          case "$1" in
+            --version) printf 'NVIM v0.11.0\n'; exit 0 ;;
+          esac

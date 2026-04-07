@@ -1,0 +1,16 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Apply neovim role with appimage method
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.neovim
+      vars:
+        neovim_owner: testuser
+        neovim_install_method: appimage
+        neovim_appimage_version: v0.12.1
+        neovim_appimage_url: file:///opt/fake-nvim-v0.12.1.appimage
+        neovim_appimage_dest: ~/.local/bin
+        neovim_appimage_name: nvim

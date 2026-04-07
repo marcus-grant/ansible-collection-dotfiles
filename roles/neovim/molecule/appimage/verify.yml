@@ -1,0 +1,56 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Resolve testuser home directory
+      ansible.builtin.command: getent passwd testuser
+      register: neovim_verify_getent
+      changed_when: false
+
+    - name: Set neovim_verify_home fact
+      ansible.builtin.set_fact:
+        neovim_verify_home: "{{ neovim_verify_getent.stdout.split(':')[5] }}"
+
+    - name: Collect installed packages
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Assert FUSE packages installed
+      ansible.builtin.assert:
+        that: "'libfuse2' in ansible_facts.packages"
+
+    - name: Stat appimage dest directory
+      ansible.builtin.stat:
+        path: "{{ neovim_verify_home }}/.local/bin"
+      register: neovim_verify_destdir
+
+    - name: Assert dest directory exists and is owned by testuser
+      ansible.builtin.assert:
+        that:
+          - neovim_verify_destdir.stat.exists
+          - neovim_verify_destdir.stat.isdir
+          - neovim_verify_destdir.stat.pw_name == 'testuser'
+
+    - name: Stat nvim binary
+      ansible.builtin.stat:
+        path: "{{ neovim_verify_home }}/.local/bin/nvim"
+      register: neovim_verify_binary
+
+    - name: Assert nvim binary exists with correct mode and owner
+      ansible.builtin.assert:
+        that:
+          - neovim_verify_binary.stat.exists
+          - neovim_verify_binary.stat.mode == '0755'
+          - neovim_verify_binary.stat.pw_name == 'testuser'
+
+    - name: Run nvim --version
+      ansible.builtin.command: "{{ neovim_verify_home }}/.local/bin/nvim --version"
+      register: neovim_verify_version
+      changed_when: false
+
+    - name: Assert installed version matches target (confirms mismatch triggered re-download)
+      ansible.builtin.assert:
+        that:
+          - neovim_verify_version.rc == 0
+          - "'v0.12.1' in neovim_verify_version.stdout"
