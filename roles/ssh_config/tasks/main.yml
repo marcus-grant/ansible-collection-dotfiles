@@ -109,12 +109,25 @@
   changed_when: false
   failed_when: false
 
-- name: Collect known_hosts lines for all entries
+- name: Collect deduplicated known_hosts lines
   ansible.builtin.set_fact:
     ssh_config_kh_lines: >-
-      {{ ssh_config_kh_lookups.results
-         | map(attribute='stdout_lines') | flatten
-         | reject('match', '^#') | list }}
+      {%- set lines = [] -%}
+      {%- for result in ssh_config_kh_lookups.results -%}
+        {%- set host = result.ssh_config_kh_host -%}
+        {%- set seen = [] -%}
+        {%- for raw_line in result.stdout_lines | reject('match', '^#') -%}
+          {%- set parts = raw_line.split() -%}
+          {%- if parts | length >= 3 -%}
+            {%- set algo_key = parts[1] + ' ' + parts[2] -%}
+            {%- if algo_key not in seen -%}
+              {%- set _ = seen.append(algo_key) -%}
+              {%- set _ = lines.append(host + ' ' + parts[1] + ' ' + parts[2]) -%}
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endfor -%}
+      {{ lines | unique | list }}
 
 - name: Ensure known_hosts file exists
   become: true

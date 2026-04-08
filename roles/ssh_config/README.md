@@ -13,7 +13,7 @@ its own file in `~/.ssh/config.d/`. The main `~/.ssh/config` contains only an
 | `ssh_config_common_entries` | `[]` | Shared host entries (e.g. from `group_vars`) |
 | `ssh_config_host_entries` | `[]` | Per-host entries (e.g. from `host_vars`) |
 | `ssh_config_defaults` | `{}` | Global SSH options rendered as `Host *` block in `zz-managed-defaults.conf` |
-| `ssh_config_controller_kh_path` | `~/.ssh/known_hosts` | Path to the controller's known_hosts file to read entries from |
+| `ssh_config_controller_kh_path` | `~/.ssh/known_hosts` | Path to the controller's known_hosts file to read entries from. Entries are resolved via `ssh-keygen -F` (handles hashed hostnames). Each host is deduplicated by algorithm+key and written as plaintext hostname format. |
 
 The role concatenates `ssh_config_common_entries + ssh_config_host_entries` before
 rendering. Common entries appear first (SSH first-match-wins).

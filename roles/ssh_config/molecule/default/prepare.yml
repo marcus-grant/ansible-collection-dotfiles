@@ -21,9 +21,20 @@
   hosts: localhost
   gather_facts: false
   tasks:
-    - name: Create known_hosts fixture on controller
+    - name: Create plaintext known_hosts fixture
       ansible.builtin.copy:
         dest: /tmp/molecule_kh_fixture
         content: |
           github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
         mode: '0600'
+
+    - name: Hash fixture entries
+      ansible.builtin.command:
+        cmd: ssh-keygen -H -f /tmp/molecule_kh_fixture
+      changed_when: true
+
+    - name: Append original plaintext entry back to fixture
+      ansible.builtin.lineinfile:
+        path: /tmp/molecule_kh_fixture
+        line: "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
+        state: present
