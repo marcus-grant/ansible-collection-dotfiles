@@ -150,9 +150,11 @@ diff:
 '''
 
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
+from urllib.parse import urlparse
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -160,6 +162,61 @@ from ansible.module_utils.basic import AnsibleModule
 # ---------------------------------------------------------------------------
 # Pure helper functions — imported directly by unit tests
 # ---------------------------------------------------------------------------
+
+def _extract_ssh_hostname(repo):
+    """Return hostname from an SSH repo URL, or None if not an SSH URL."""
+    if not repo:
+        return None
+    m = re.match(r'^git@([^:]+):', repo)
+    if m:
+        return m.group(1)
+    parsed = urlparse(repo)
+    if parsed.scheme == 'ssh':
+        return parsed.hostname  # strips port and lowercases
+    return None
+
+
+def check_ssh_preflight(repo, home_dir):
+    """Return an error string if SSH is not configured for repo, else None."""
+    hostname = _extract_ssh_hostname(repo)
+    if hostname is None:
+        return None
+
+    home = Path(home_dir)
+    known_hosts = home / '.ssh' / 'known_hosts'
+
+    if not known_hosts.exists():
+        return (
+            f'SSH not configured for {hostname} — ~/.ssh/known_hosts missing. '
+            'Ensure ssh_config role has run. See ssh_config role README.'
+        )
+
+    content = known_hosts.read_text()
+    # Token-level match: hostname must be the first field on a line
+    found = any(
+        line.split() and line.split()[0] == hostname
+        for line in content.splitlines()
+        if line.strip() and not line.startswith('#')
+    )
+    if not found:
+        return (
+            f'SSH not configured for {hostname} — host not in ~/.ssh/known_hosts. '
+            'Ensure ssh_config role has run. See ssh_config role README.'
+        )
+
+    config_d = home / '.ssh' / 'config.d' / f'managed-{hostname}.conf'
+    if config_d.exists():
+        return None
+
+    ssh_config = home / '.ssh' / 'config'
+    if ssh_config.exists() and hostname in ssh_config.read_text():
+        return None
+
+    return (
+        f'SSH not configured for {hostname} — no ssh_config entry found. '
+        'Ensure ssh_config role has run. See ssh_config role README.'
+    )
+
 
 def _ensure_parent(path):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -260,6 +317,11 @@ def run_module():
     force = module.params['force']
     update = module.params['update']
     files = module.params['files']
+
+    err = check_ssh_preflight(repo, str(Path('~').expanduser()))
+    if err:
+        module.fail_json(msg=err)
+        return  # pyright: ignore[reportUnreachable]
 
     cloned = False
     try:

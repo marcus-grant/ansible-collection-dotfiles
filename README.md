@@ -74,6 +74,18 @@ programs expect them. Supports two placement methods:
 
 **Requirements:** The `git` binary must be present on the target host before invoking this module.
 
+**SSH pre-flight check:** When `repo` is an SSH URL (`git@…` or `ssh://…`), the
+module asserts that SSH is properly configured before attempting the clone:
+
+1. `~/.ssh/known_hosts` must exist and contain the repo hostname.
+2. Either `~/.ssh/config.d/managed-<hostname>.conf` must exist, or `~/.ssh/config`
+   must reference the hostname.
+
+If either check fails the module aborts immediately with a clear error message
+rather than hanging on an interactive SSH prompt. This enforces the soft
+dependency on the `ssh_config` role: run `ssh_config` before any role that uses
+`dotfiles_git` with an SSH URL.
+
 Full parameter reference: `ansible-doc marcus_grant.dotfiles.dotfiles_git`
 
 **Minimal example:**
@@ -98,7 +110,7 @@ Full parameter reference: `ansible-doc marcus_grant.dotfiles.dotfiles_git`
 
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
-| `repo` | yes | — | Git repository URL. Supports HTTPS and SSH (SSH requires keys on target host). |
+| `repo` | yes | — | Git repository URL. Supports HTTPS and SSH (SSH triggers pre-flight check; requires `ssh_config` role to have run). |
 | `dest` | yes | — | Clone destination (tilde expanded) |
 | `version` | no | `HEAD` | Git ref to check out |
 | `force` | no | `false` | Delete and re-clone even if repo exists |

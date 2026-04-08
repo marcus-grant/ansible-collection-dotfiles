@@ -7,7 +7,9 @@ install methods.
 ## Requirements
 
 - `git` on the target host
-- SSH key deployed (via `ssh_keys` role) if `neovim_git_repo` is an SSH URL
+- `ssh_config` role applied before this role if `neovim_git_repo` is an SSH URL —
+  the `dotfiles_git` module checks that `known_hosts` and SSH config are in place
+  and fails fast with a clear error if they are not
 
 ## Role Variables
 
@@ -61,7 +63,8 @@ install methods.
 
 ## Dependencies
 
-None. Intended to run after `ssh_keys` when using an SSH git repo URL.
+None hard dependencies. Soft dependency: `ssh_config` role must have run before
+this role when `neovim_git_repo` is an SSH URL.
 
 ## License
 
