@@ -13,7 +13,7 @@ its own file in `~/.ssh/config.d/`. The main `~/.ssh/config` contains only an
 | `ssh_config_common_entries` | `[]` | Shared host entries (e.g. from `group_vars`) |
 | `ssh_config_host_entries` | `[]` | Per-host entries (e.g. from `host_vars`) |
 | `ssh_config_defaults` | `{}` | Global SSH options rendered as `Host *` block in `zz-managed-defaults.conf` |
-| `ssh_config_known_hosts` | `[]` | Static known_hosts key strings added via `lineinfile` |
+| `ssh_config_controller_kh_path` | `~/.ssh/known_hosts` | Path to the controller's known_hosts file to read entries from |
 
 The role concatenates `ssh_config_common_entries + ssh_config_host_entries` before
 rendering. Common entries appear first (SSH first-match-wins).
@@ -96,8 +96,8 @@ ssh_config_defaults:
   identities_only: "yes"
   server_alive_interval: 60
 
-ssh_config_known_hosts:
-  - "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
+# ssh_config_controller_kh_path defaults to ~/.ssh/known_hosts on the controller.
+# The role uses ssh-keygen -F to extract lines matching entry hosts (handles hashed entries).
 ```
 
 Produces `~/.ssh/config`:

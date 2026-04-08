@@ -97,6 +97,25 @@
     loop_var: ssh_config_stale_file
   when: ssh_config_stale_file.path | basename not in ssh_config_expected_files
 
+- name: Look up entry hosts in controller known_hosts
+  ansible.builtin.command:
+    cmd: "ssh-keygen -F {{ ssh_config_kh_host }} -f {{ ssh_config_controller_kh_path }}"
+  delegate_to: localhost
+  become: false
+  loop: "{{ ssh_config_all_entries | map(attribute='host') | list }}"
+  loop_control:
+    loop_var: ssh_config_kh_host
+  register: ssh_config_kh_lookups
+  changed_when: false
+  failed_when: false
+
+- name: Collect known_hosts lines for all entries
+  ansible.builtin.set_fact:
+    ssh_config_kh_lines: >-
+      {{ ssh_config_kh_lookups.results
+         | map(attribute='stdout_lines') | flatten
+         | reject('match', '^#') | list }}
+
 - name: Ensure known_hosts file exists
   become: true
   become_user: root
@@ -108,16 +127,16 @@
     group: "{{ ssh_config_owner }}"
     modification_time: preserve
     access_time: preserve
-  when: ssh_config_known_hosts | length > 0
+  when: ssh_config_kh_lines | length > 0
 
-- name: Add static known_hosts entries
+- name: Deploy known_hosts lines to target
   become: true
   become_user: root
   ansible.builtin.lineinfile:
     path: "{{ ssh_config_home }}/.ssh/known_hosts"
-    line: "{{ ssh_config_kh_entry }}"
+    line: "{{ ssh_config_kh_line }}"
     state: present
-  loop: "{{ ssh_config_known_hosts }}"
+  loop: "{{ ssh_config_kh_lines }}"
   loop_control:
-    loop_var: ssh_config_kh_entry
-  when: ssh_config_known_hosts | length > 0
+    loop_var: ssh_config_kh_line
+  when: ssh_config_kh_lines | length > 0

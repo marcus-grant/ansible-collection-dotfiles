@@ -6,7 +6,7 @@ galaxy_info:
   description: |
     Manage ~/.ssh/config via drop-in config.d directory. Each host entry renders
     to its own managed-<host>.conf file; main config contains only an Include
-    directive. Manages .ssh directory permissions and optional known_hosts entries.
+    directive. Known_hosts entries are sourced from the controller via ssh-keygen -F.
   issue_tracker_url: https://github.com/marcus-grant/ansible-collection-dotfiles/issues
   license: GPL-2.0-or-later
   min_ansible_version: '2.1'

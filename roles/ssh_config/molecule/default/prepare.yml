@@ -16,3 +16,14 @@
         name: testuser
         state: present
         create_home: true
+
+- name: Prepare controller fixtures
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Create known_hosts fixture on controller
+      ansible.builtin.copy:
+        dest: /tmp/molecule_kh_fixture
+        content: |
+          github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+        mode: '0600'

@@ -4,4 +4,4 @@ ssh_config_owner: "{{ ansible_user_id }}"
 ssh_config_common_entries: []
 ssh_config_host_entries: []
 ssh_config_defaults: {}
-ssh_config_known_hosts: []
+ssh_config_controller_kh_path: ~/.ssh/known_hosts

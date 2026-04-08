@@ -23,5 +23,4 @@
         ssh_config_defaults:
           add_keys_to_agent: "yes"
           identities_only: "yes"
-        ssh_config_known_hosts:
-          - "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
+        ssh_config_controller_kh_path: /tmp/molecule_kh_fixture
