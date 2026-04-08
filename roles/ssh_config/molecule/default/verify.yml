@@ -1,0 +1,104 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Resolve testuser home directory
+      ansible.builtin.command: getent passwd testuser
+      register: ssh_config_verify_getent
+      changed_when: false
+
+    - name: Set ssh_config_verify_home fact
+      ansible.builtin.set_fact:
+        ssh_config_verify_home: "{{ ssh_config_verify_getent.stdout.split(':')[5] }}"
+
+    - name: Stat .ssh directory
+      ansible.builtin.stat:
+        path: "{{ ssh_config_verify_home }}/.ssh"
+      register: ssh_config_verify_dir
+
+    - name: Assert .ssh directory exists with correct mode and owner
+      ansible.builtin.assert:
+        that:
+          - ssh_config_verify_dir.stat.exists
+          - ssh_config_verify_dir.stat.isdir
+          - ssh_config_verify_dir.stat.mode == '0700'
+          - ssh_config_verify_dir.stat.pw_name == 'testuser'
+
+    - name: Stat .ssh/config file
+      ansible.builtin.stat:
+        path: "{{ ssh_config_verify_home }}/.ssh/config"
+      register: ssh_config_verify_file
+
+    - name: Assert .ssh/config exists with correct mode and owner
+      ansible.builtin.assert:
+        that:
+          - ssh_config_verify_file.stat.exists
+          - ssh_config_verify_file.stat.mode == '0600'
+          - ssh_config_verify_file.stat.pw_name == 'testuser'
+
+    - name: Slurp .ssh/config content
+      ansible.builtin.slurp:
+        src: "{{ ssh_config_verify_home }}/.ssh/config"
+      register: ssh_config_verify_content
+
+    - name: Set ssh_config_verify_text fact
+      ansible.builtin.set_fact:
+        ssh_config_verify_text: "{{ ssh_config_verify_content.content | b64decode }}"
+
+    - name: Assert common entry (github.com) is present
+      ansible.builtin.assert:
+        that:
+          - "'Host github.com' in ssh_config_verify_text"
+          - "'User git' in ssh_config_verify_text"
+          - "'IdentityFile ~/.ssh/id_ed25519_git' in ssh_config_verify_text"
+
+    - name: Assert host entry (myserver) is present
+      ansible.builtin.assert:
+        that:
+          - "'Host myserver' in ssh_config_verify_text"
+          - "'HostName 192.168.1.10' in ssh_config_verify_text"
+          - "'User marcus' in ssh_config_verify_text"
+          - "'Port 2222' in ssh_config_verify_text"
+          - "'IdentityFile ~/.ssh/id_ed25519_personal' in ssh_config_verify_text"
+
+    - name: Assert github.com appears before myserver (common before host entries)
+      ansible.builtin.assert:
+        that: >-
+          ssh_config_verify_text.index('Host github.com') <
+          ssh_config_verify_text.index('Host myserver')
+
+    - name: Assert global defaults block is present
+      ansible.builtin.assert:
+        that:
+          - "'Host *' in ssh_config_verify_text"
+          - "'AddKeysToAgent yes' in ssh_config_verify_text"
+          - "'IdentitiesOnly yes' in ssh_config_verify_text"
+
+    - name: Assert Host * block appears after per-host entries
+      ansible.builtin.assert:
+        that: >-
+          ssh_config_verify_text.index('Host *') >
+          ssh_config_verify_text.index('Host myserver')
+
+    - name: Stat .ssh/known_hosts file
+      ansible.builtin.stat:
+        path: "{{ ssh_config_verify_home }}/.ssh/known_hosts"
+      register: ssh_config_verify_known_hosts
+
+    - name: Assert known_hosts exists with correct mode
+      ansible.builtin.assert:
+        that:
+          - ssh_config_verify_known_hosts.stat.exists
+          - ssh_config_verify_known_hosts.stat.mode == '0644'
+
+    - name: Slurp known_hosts content
+      ansible.builtin.slurp:
+        src: "{{ ssh_config_verify_home }}/.ssh/known_hosts"
+      register: ssh_config_verify_kh_content
+
+    - name: Assert github.com key entry is present in known_hosts
+      ansible.builtin.assert:
+        that: >-
+          'github.com ssh-ed25519' in
+          (ssh_config_verify_kh_content.content | b64decode)

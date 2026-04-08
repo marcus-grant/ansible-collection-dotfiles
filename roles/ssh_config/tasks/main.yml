@@ -1,0 +1,59 @@
+---
+# tasks file for marcus_grant.dotfiles.ssh_config
+- name: Resolve home directory for ssh_config_owner
+  ansible.builtin.command: "getent passwd {{ ssh_config_owner }}"
+  register: ssh_config_getent
+  changed_when: false
+
+- name: Set ssh_config_home fact
+  ansible.builtin.set_fact:
+    ssh_config_home: "{{ ssh_config_getent.stdout.split(':')[5] }}"
+
+- name: Set ssh_config_all_entries fact
+  ansible.builtin.set_fact:
+    ssh_config_all_entries: "{{ ssh_config_common_entries + ssh_config_host_entries }}"
+
+- name: Ensure .ssh directory exists
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ ssh_config_home }}/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "{{ ssh_config_owner }}"
+    group: "{{ ssh_config_owner }}"
+
+- name: Template SSH config file
+  become: true
+  become_user: root
+  ansible.builtin.template:
+    src: ssh_config.j2
+    dest: "{{ ssh_config_home }}/.ssh/config"
+    mode: '0600'
+    owner: "{{ ssh_config_owner }}"
+    group: "{{ ssh_config_owner }}"
+
+- name: Ensure known_hosts file exists
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ ssh_config_home }}/.ssh/known_hosts"
+    state: touch
+    mode: '0644'
+    owner: "{{ ssh_config_owner }}"
+    group: "{{ ssh_config_owner }}"
+    modification_time: preserve
+    access_time: preserve
+  when: ssh_config_known_hosts | length > 0
+
+- name: Add static known_hosts entries
+  become: true
+  become_user: root
+  ansible.builtin.lineinfile:
+    path: "{{ ssh_config_home }}/.ssh/known_hosts"
+    line: "{{ ssh_config_kh_entry }}"
+    state: present
+  loop: "{{ ssh_config_known_hosts }}"
+  loop_control:
+    loop_var: ssh_config_kh_entry
+  when: ssh_config_known_hosts | length > 0

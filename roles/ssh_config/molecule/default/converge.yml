@@ -1,0 +1,27 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Apply ssh_config role
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.ssh_config
+      vars:
+        ssh_config_owner: testuser
+        ssh_config_common_entries:
+          - host: github.com
+            user: git
+            identity_file: id_ed25519_git
+        ssh_config_host_entries:
+          - host: myserver
+            hostname: 192.168.1.10
+            user: marcus
+            port: 2222
+            identity_file: id_ed25519_personal
+            authorize: true
+        ssh_config_defaults:
+          AddKeysToAgent: "yes"
+          IdentitiesOnly: "yes"
+        ssh_config_known_hosts:
+          - "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"

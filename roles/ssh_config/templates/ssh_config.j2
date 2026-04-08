@@ -1,0 +1,24 @@
+# Ansible managed - do not edit
+{% for entry in ssh_config_all_entries %}
+
+Host {{ entry.host }}
+{% if entry.hostname is defined %}
+  HostName {{ entry.hostname }}
+{% endif %}
+{% if entry.user is defined %}
+  User {{ entry.user }}
+{% endif %}
+{% if entry.port is defined %}
+  Port {{ entry.port }}
+{% endif %}
+{% if entry.identity_file is defined %}
+  IdentityFile ~/.ssh/{{ entry.identity_file }}
+{% endif %}
+{% endfor %}
+{% if ssh_config_defaults %}
+
+Host *
+{% for key, val in ssh_config_defaults.items() %}
+  {{ key }} {{ val }}
+{% endfor %}
+{% endif %}
