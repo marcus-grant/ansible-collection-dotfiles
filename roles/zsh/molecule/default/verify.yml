@@ -62,3 +62,43 @@
     - name: Assert zprofile shim sources profile.zsh
       ansible.builtin.assert:
         that: "'profile.zsh' in (zprofile_content.content | b64decode)"
+
+    # --- zsh_owner: testuser assertions ---
+
+    - name: Stat testuser zsh clone
+      ansible.builtin.stat:
+        path: /home/testuser/.config/zsh/.git
+      register: testuser_zsh_git
+
+    - name: Assert testuser zsh dotfiles repo is cloned
+      ansible.builtin.assert:
+        that: testuser_zsh_git.stat.exists
+
+    - name: Stat testuser zsh config dir
+      ansible.builtin.stat:
+        path: /home/testuser/.config/zsh
+      register: testuser_zsh_dir
+
+    - name: Assert testuser owns the zsh clone directory
+      ansible.builtin.assert:
+        that: testuser_zsh_dir.stat.pw_name == 'testuser'
+
+    - name: Stat testuser zshrc shim
+      ansible.builtin.stat:
+        path: /home/testuser/.zshrc
+      register: testuser_zshrc
+
+    - name: Assert testuser zshrc shim exists and is owned by testuser
+      ansible.builtin.assert:
+        that:
+          - testuser_zshrc.stat.exists
+          - testuser_zshrc.stat.pw_name == 'testuser'
+
+    - name: Register testuser shell info
+      ansible.builtin.user:
+        name: testuser
+      register: testuser_info
+
+    - name: Assert zsh is the default shell for testuser
+      ansible.builtin.assert:
+        that: testuser_info.shell == '/usr/bin/zsh'

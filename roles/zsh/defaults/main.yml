@@ -18,3 +18,6 @@ zsh_git_update: false
 
 # extra zsh packages to install
 zsh_extra_packages: []
+
+# owner of the zsh config files and default shell setting
+zsh_owner: "{{ ansible_user_id }}"

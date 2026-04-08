@@ -8,6 +8,11 @@
         cache_valid_time: 3600
       when: ansible_facts['os_family'] == 'Debian'
 
+    - name: Install git
+      ansible.builtin.package:
+        name: git
+        state: present
+
     - name: Create local test dotfiles repo directory
       ansible.builtin.file:
         path: /opt/test-dots-zsh
@@ -41,3 +46,22 @@
         cd /opt/test-dots-zsh && git add . && git commit -m "fixtures"
       args:
         creates: /opt/test-dots-zsh/.git/refs/heads
+
+    - name: Create testuser for zsh_owner tests
+      ansible.builtin.user:
+        name: testuser
+        create_home: true
+        shell: /bin/bash
+
+    - name: Clone test repo as testuser-owned copy
+      ansible.builtin.command: >
+        git clone /opt/test-dots-zsh /opt/test-dots-zsh-testuser
+      args:
+        creates: /opt/test-dots-zsh-testuser/.git
+
+    - name: Set testuser as owner of their repo copy
+      ansible.builtin.file:
+        path: /opt/test-dots-zsh-testuser
+        owner: testuser
+        group: testuser
+        recurse: true

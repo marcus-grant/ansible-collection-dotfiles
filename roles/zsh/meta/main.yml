@@ -5,6 +5,9 @@ galaxy_info:
   description: >
     A role to clone a git-controlled directory containing zsh dotfiles,
     then placing shim files at the expected config locations.
+    Supports zsh_owner for managing config as a non-ansible user.
+    When using an SSH repo URL, the ssh_config role must have run first —
+    dotfiles_git enforces this with a pre-flight check that fails fast rather than hanging.
   issue_tracker_url: https://github.com/marcus-grant/ansible-collection-dotfiles/issues
   license: GPL-2.0-or-later
 

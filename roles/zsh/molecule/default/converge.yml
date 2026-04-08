@@ -9,10 +9,19 @@
       ansible.builtin.include_role:
         name: marcus_grant.dotfiles.profile
 
-    - name: Apply zsh role
+    - name: Apply zsh role (default owner = root)
       ansible.builtin.include_role:
         name: marcus_grant.dotfiles.zsh
       vars:
         zsh_git_repo: /opt/test-dots-zsh
+        zsh_shell_as_default: true
+        zsh_git_force: true
+
+    - name: Apply zsh role as testuser
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.zsh
+      vars:
+        zsh_owner: testuser
+        zsh_git_repo: /opt/test-dots-zsh-testuser
         zsh_shell_as_default: true
         zsh_git_force: true

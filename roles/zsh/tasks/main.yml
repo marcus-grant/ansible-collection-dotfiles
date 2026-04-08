@@ -1,5 +1,14 @@
 ---
 # tasks file for marcus_grant.dotfiles.zsh
+- name: Resolve home directory for zsh_owner
+  ansible.builtin.command: "getent passwd {{ zsh_owner }}"
+  register: zsh_getent
+  changed_when: false
+
+- name: Set zsh_home fact
+  ansible.builtin.set_fact:
+    zsh_home: "{{ zsh_getent.stdout.split(':')[5] }}"
+
 - name: Include preflight checks for OS family
   ansible.builtin.include_tasks: "preflight-{{ ansible_os_family }}.yml"
   when: ansible_os_family == 'Darwin'
@@ -27,26 +36,28 @@
   when: ansible_os_family != 'Darwin'
 
 - name: Clone zsh dotfiles and place config shims
+  become: true
+  become_user: "{{ zsh_owner }}"
   marcus_grant.dotfiles.dotfiles_git:
     repo: "{{ zsh_git_repo }}"
-    dest: "{{ zsh_config_dest }}"
+    dest: "{{ zsh_config_dest | replace('~', zsh_home) }}"
     version: "{{ zsh_git_version }}"
     force: "{{ zsh_git_force }}"
     update: "{{ zsh_git_update }}"
     files:
       - src: "{{ zsh_rc_file }}"
-        dest: "~/.zshrc"
+        dest: "{{ zsh_home }}/.zshrc"
       - src: "{{ zsh_env_file }}"
-        dest: "~/.zshenv"
+        dest: "{{ zsh_home }}/.zshenv"
         prepend_lines: "{{ ['source $HOME/.profile'] if zsh_env_source_profile else [] }}"
       - src: "{{ zsh_profile_file }}"
-        dest: "~/.zprofile"
+        dest: "{{ zsh_home }}/.zprofile"
 
-- name: Set ZSH to be the default shell of ansible user
+- name: Set ZSH to be the default shell for zsh_owner
   become: true
   become_user: root
   ansible.builtin.user:
-    name: "{{ ansible_user_id }}"
+    name: "{{ zsh_owner }}"
     shell: "{{ zsh_default_shell_path }}"
   when:
     - zsh_shell_as_default

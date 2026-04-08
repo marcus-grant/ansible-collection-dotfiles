@@ -10,13 +10,17 @@ the locations ZSH expects them, and optionally sets ZSH as the default shell.
 - **`git`** must be present on the target host before this role runs.
   It is not installed by this role. Ensure it is available via a prior role
   (e.g. `marcus_grant.dev.git`) or a pre-task.
+- **`ssh_config`** role must have run before this role if `zsh_git_repo` is an
+  SSH URL — the `dotfiles_git` module enforces this with a pre-flight check that
+  fails fast with a clear error rather than hanging on an SSH prompt.
 
 ## Role Variables
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `zsh_git_repo` | yes | — | Git URL or path of the ZSH dotfiles repo. Supports HTTPS and SSH URLs; SSH requires keys configured on the target host. |
-| `zsh_config_dest` | no | `~/.config/zsh` | Clone destination for the dotfiles repo |
+| `zsh_owner` | no | `{{ ansible_user_id }}` | User who owns the config files and receives the default shell change |
+| `zsh_git_repo` | yes | — | Git URL or path of the ZSH dotfiles repo. Supports HTTPS and SSH URLs; SSH triggers pre-flight check (requires `ssh_config` role). |
+| `zsh_config_dest` | no | `~/.config/zsh` | Clone destination for the dotfiles repo (`~` resolved against `zsh_owner`'s home) |
 | `zsh_rc_file` | no | `rc.zsh` | File inside repo to shim as `~/.zshrc` |
 | `zsh_env_file` | no | `env.zsh` | File inside repo to shim as `~/.zshenv` |
 | `zsh_profile_file` | no | `profile.zsh` | File inside repo to shim as `~/.zprofile` |
@@ -32,6 +36,9 @@ the locations ZSH expects them, and optionally sets ZSH as the default shell.
 
 - `marcus_grant.dotfiles.profile` — run before this role to ensure `~/.profile`
   exists for the `zshenv` shim to source.
+
+Soft dependency: `ssh_config` role must have run before this role when
+`zsh_git_repo` is an SSH URL.
 
 ## Example Playbook
 
