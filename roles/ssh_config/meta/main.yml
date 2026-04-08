@@ -4,8 +4,9 @@ galaxy_info:
   namespace: marcus_grant
   author: marcus_grant
   description: |
-    Template ~/.ssh/config from lists of host entries. Manages .ssh directory
-    permissions and optional known_hosts static entries.
+    Manage ~/.ssh/config via drop-in config.d directory. Each host entry renders
+    to its own managed-<host>.conf file; main config contains only an Include
+    directive. Manages .ssh directory permissions and optional known_hosts entries.
   issue_tracker_url: https://github.com/marcus-grant/ansible-collection-dotfiles/issues
   license: GPL-2.0-or-later
   min_ansible_version: '2.1'

@@ -13,6 +13,14 @@
   ansible.builtin.set_fact:
     ssh_config_all_entries: "{{ ssh_config_common_entries + ssh_config_host_entries }}"
 
+- name: Assert every entry has a host key
+  ansible.builtin.assert:
+    that: "'host' in ssh_config_entry"
+    fail_msg: "ssh_config entry is missing required 'host' key: {{ ssh_config_entry }}"
+  loop: "{{ ssh_config_all_entries }}"
+  loop_control:
+    loop_var: ssh_config_entry
+
 - name: Ensure .ssh directory exists
   become: true
   become_user: root
@@ -23,15 +31,71 @@
     owner: "{{ ssh_config_owner }}"
     group: "{{ ssh_config_owner }}"
 
-- name: Template SSH config file
+- name: Ensure .ssh/config.d directory exists
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ ssh_config_home }}/.ssh/config.d"
+    state: directory
+    mode: '0700'
+    owner: "{{ ssh_config_owner }}"
+    group: "{{ ssh_config_owner }}"
+
+- name: Template SSH main config (Include only)
   become: true
   become_user: root
   ansible.builtin.template:
-    src: ssh_config.j2
+    src: ssh_config_main.j2
     dest: "{{ ssh_config_home }}/.ssh/config"
     mode: '0600'
     owner: "{{ ssh_config_owner }}"
     group: "{{ ssh_config_owner }}"
+
+- name: Template SSH config drop-in entry files
+  become: true
+  become_user: root
+  ansible.builtin.template:
+    src: ssh_config_entry.j2
+    dest: "{{ ssh_config_home }}/.ssh/config.d/managed-{{ ssh_config_entry.host }}.conf"
+    mode: '0600'
+    owner: "{{ ssh_config_owner }}"
+    group: "{{ ssh_config_owner }}"
+  loop: "{{ ssh_config_all_entries }}"
+  loop_control:
+    loop_var: ssh_config_entry
+
+- name: Template SSH config defaults file
+  become: true
+  become_user: root
+  ansible.builtin.template:
+    src: ssh_config_defaults.j2
+    dest: "{{ ssh_config_home }}/.ssh/config.d/zz-managed-defaults.conf"
+    mode: '0600'
+    owner: "{{ ssh_config_owner }}"
+    group: "{{ ssh_config_owner }}"
+  when: ssh_config_defaults | length > 0
+
+- name: Find existing managed config files
+  ansible.builtin.find:
+    paths: "{{ ssh_config_home }}/.ssh/config.d"
+    patterns: "managed-*.conf"
+  register: ssh_config_existing_files
+
+- name: Set expected managed filenames
+  ansible.builtin.set_fact:
+    ssh_config_expected_files: >-
+      {{ ssh_config_all_entries | map(attribute='host')
+         | map('regex_replace', '^(.*)$', 'managed-\1.conf') | list
+         + (['zz-managed-defaults.conf'] if ssh_config_defaults | length > 0 else []) }}
+
+- name: Remove stale managed config files
+  ansible.builtin.file:
+    path: "{{ ssh_config_stale_file.path }}"
+    state: absent
+  loop: "{{ ssh_config_existing_files.files }}"
+  loop_control:
+    loop_var: ssh_config_stale_file
+  when: ssh_config_stale_file.path | basename not in ssh_config_expected_files
 
 - name: Ensure known_hosts file exists
   become: true

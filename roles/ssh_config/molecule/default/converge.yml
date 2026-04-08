@@ -12,16 +12,16 @@
         ssh_config_common_entries:
           - host: github.com
             user: git
-            identity_file: id_ed25519_git
+            identity_file: ~/.ssh/id_ed25519_git
         ssh_config_host_entries:
           - host: myserver
-            hostname: 192.168.1.10
+            host_name: 192.168.1.10
             user: marcus
             port: 2222
-            identity_file: id_ed25519_personal
-            authorize: true
+            identity_file: ~/.ssh/id_ed25519_personal
+            ssh_authorize: true
         ssh_config_defaults:
-          AddKeysToAgent: "yes"
-          IdentitiesOnly: "yes"
+          add_keys_to_agent: "yes"
+          identities_only: "yes"
         ssh_config_known_hosts:
           - "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"

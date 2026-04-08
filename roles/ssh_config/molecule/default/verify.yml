@@ -40,46 +40,96 @@
     - name: Slurp .ssh/config content
       ansible.builtin.slurp:
         src: "{{ ssh_config_verify_home }}/.ssh/config"
-      register: ssh_config_verify_content
+      register: ssh_config_verify_main_content
 
-    - name: Set ssh_config_verify_text fact
-      ansible.builtin.set_fact:
-        ssh_config_verify_text: "{{ ssh_config_verify_content.content | b64decode }}"
-
-    - name: Assert common entry (github.com) is present
+    - name: Assert .ssh/config contains only Include directive
       ansible.builtin.assert:
         that:
-          - "'Host github.com' in ssh_config_verify_text"
-          - "'User git' in ssh_config_verify_text"
-          - "'IdentityFile ~/.ssh/id_ed25519_git' in ssh_config_verify_text"
+          - "'Include ~/.ssh/config.d/*' in (ssh_config_verify_main_content.content | b64decode)"
 
-    - name: Assert host entry (myserver) is present
+    - name: Stat .ssh/config.d directory
+      ansible.builtin.stat:
+        path: "{{ ssh_config_verify_home }}/.ssh/config.d"
+      register: ssh_config_verify_confd
+
+    - name: Assert .ssh/config.d exists with correct mode and owner
       ansible.builtin.assert:
         that:
-          - "'Host myserver' in ssh_config_verify_text"
-          - "'HostName 192.168.1.10' in ssh_config_verify_text"
-          - "'User marcus' in ssh_config_verify_text"
-          - "'Port 2222' in ssh_config_verify_text"
-          - "'IdentityFile ~/.ssh/id_ed25519_personal' in ssh_config_verify_text"
+          - ssh_config_verify_confd.stat.exists
+          - ssh_config_verify_confd.stat.isdir
+          - ssh_config_verify_confd.stat.mode == '0700'
+          - ssh_config_verify_confd.stat.pw_name == 'testuser'
 
-    - name: Assert github.com appears before myserver (common before host entries)
-      ansible.builtin.assert:
-        that: >-
-          ssh_config_verify_text.index('Host github.com') <
-          ssh_config_verify_text.index('Host myserver')
+    - name: Stat managed-github.com.conf
+      ansible.builtin.stat:
+        path: "{{ ssh_config_verify_home }}/.ssh/config.d/managed-github.com.conf"
+      register: ssh_config_verify_github
 
-    - name: Assert global defaults block is present
+    - name: Assert managed-github.com.conf exists with correct mode and owner
       ansible.builtin.assert:
         that:
-          - "'Host *' in ssh_config_verify_text"
-          - "'AddKeysToAgent yes' in ssh_config_verify_text"
-          - "'IdentitiesOnly yes' in ssh_config_verify_text"
+          - ssh_config_verify_github.stat.exists
+          - ssh_config_verify_github.stat.mode == '0600'
+          - ssh_config_verify_github.stat.pw_name == 'testuser'
 
-    - name: Assert Host * block appears after per-host entries
+    - name: Slurp managed-github.com.conf
+      ansible.builtin.slurp:
+        src: "{{ ssh_config_verify_home }}/.ssh/config.d/managed-github.com.conf"
+      register: ssh_config_verify_github_content
+
+    - name: Assert managed-github.com.conf has correct content
       ansible.builtin.assert:
-        that: >-
-          ssh_config_verify_text.index('Host *') >
-          ssh_config_verify_text.index('Host myserver')
+        that:
+          - "'Host github.com' in (ssh_config_verify_github_content.content | b64decode)"
+          - "'User git' in (ssh_config_verify_github_content.content | b64decode)"
+          - "'IdentityFile ~/.ssh/id_ed25519_git' in (ssh_config_verify_github_content.content | b64decode)"
+
+    - name: Stat managed-myserver.conf
+      ansible.builtin.stat:
+        path: "{{ ssh_config_verify_home }}/.ssh/config.d/managed-myserver.conf"
+      register: ssh_config_verify_myserver
+
+    - name: Assert managed-myserver.conf exists
+      ansible.builtin.assert:
+        that:
+          - ssh_config_verify_myserver.stat.exists
+
+    - name: Slurp managed-myserver.conf
+      ansible.builtin.slurp:
+        src: "{{ ssh_config_verify_home }}/.ssh/config.d/managed-myserver.conf"
+      register: ssh_config_verify_myserver_content
+
+    - name: Assert managed-myserver.conf has correct content
+      ansible.builtin.assert:
+        that:
+          - "'Host myserver' in (ssh_config_verify_myserver_content.content | b64decode)"
+          - "'HostName 192.168.1.10' in (ssh_config_verify_myserver_content.content | b64decode)"
+          - "'User marcus' in (ssh_config_verify_myserver_content.content | b64decode)"
+          - "'Port 2222' in (ssh_config_verify_myserver_content.content | b64decode)"
+          - "'IdentityFile ~/.ssh/id_ed25519_personal' in (ssh_config_verify_myserver_content.content | b64decode)"
+          - "'SshAuthorize' not in (ssh_config_verify_myserver_content.content | b64decode)"
+
+    - name: Stat zz-managed-defaults.conf
+      ansible.builtin.stat:
+        path: "{{ ssh_config_verify_home }}/.ssh/config.d/zz-managed-defaults.conf"
+      register: ssh_config_verify_defaults
+
+    - name: Assert zz-managed-defaults.conf exists
+      ansible.builtin.assert:
+        that:
+          - ssh_config_verify_defaults.stat.exists
+
+    - name: Slurp zz-managed-defaults.conf
+      ansible.builtin.slurp:
+        src: "{{ ssh_config_verify_home }}/.ssh/config.d/zz-managed-defaults.conf"
+      register: ssh_config_verify_defaults_content
+
+    - name: Assert zz-managed-defaults.conf has correct content
+      ansible.builtin.assert:
+        that:
+          - "'Host *' in (ssh_config_verify_defaults_content.content | b64decode)"
+          - "'AddKeysToAgent yes' in (ssh_config_verify_defaults_content.content | b64decode)"
+          - "'IdentitiesOnly yes' in (ssh_config_verify_defaults_content.content | b64decode)"
 
     - name: Stat .ssh/known_hosts file
       ansible.builtin.stat:
