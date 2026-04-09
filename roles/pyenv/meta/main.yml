@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  role_name: pyenv
+  author: marcus_grant
+  description: Install pyenv, compile Python versions from source, set global version, configure shell integration.
+  issue_tracker_url: https://github.com/marcus-grant/ansible-collection-dotfiles/issues
+  license: GPL-2.0-or-later
+
+  min_ansible_version: '2.1'
+
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+    - name: Archlinux
+      versions:
+        - all
+
+  galaxy_tags:
+    - dotfiles
+    - dots
+    - pyenv
+    - python
+    - shell
+
+dependencies: []

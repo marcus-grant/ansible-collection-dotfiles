@@ -1,0 +1,68 @@
+---
+# tasks file for marcus_grant.dotfiles.pyenv
+- name: Assert required variables are set
+  ansible.builtin.assert:
+    that:
+      - pyenv_owner is defined and pyenv_owner | length > 0
+      - pyenv_versions is defined and pyenv_versions | length > 0
+      - pyenv_global is defined and pyenv_global | length > 0
+      - pyenv_global in pyenv_versions
+      - ansible_os_family in pyenv_build_deps
+    fail_msg: >-
+      pyenv_owner, pyenv_versions, pyenv_global are required;
+      pyenv_global must be in pyenv_versions;
+      ansible_os_family must be one of {{ pyenv_build_deps.keys() | list }}
+
+- name: Resolve home directory for pyenv_owner
+  ansible.builtin.command: "getent passwd {{ pyenv_owner }}"
+  register: pyenv_getent
+  changed_when: false
+
+- name: Set pyenv_home and pyenv_root_abs facts
+  ansible.builtin.set_fact:
+    pyenv_home: "{{ pyenv_getent.stdout.split(':')[5] }}"
+    pyenv_root_abs: "{{ pyenv_root | replace('~', pyenv_getent.stdout.split(':')[5]) }}"
+
+- name: Install pyenv build dependencies
+  become: true
+  become_user: root
+  ansible.builtin.package:
+    name: "{{ pyenv_build_deps[ansible_os_family] }}"
+    state: present
+
+- name: Clone pyenv repository
+  become: true
+  become_user: "{{ pyenv_owner }}"
+  ansible.builtin.git:
+    repo: "{{ pyenv_repo }}"
+    dest: "{{ pyenv_root_abs }}"
+    update: "{{ pyenv_update }}"
+
+- name: Install Python versions via pyenv
+  become: true
+  become_user: "{{ pyenv_owner }}"
+  ansible.builtin.command: "{{ pyenv_root_abs }}/bin/pyenv install {{ item }}"
+  args:
+    creates: "{{ pyenv_root_abs }}/versions/{{ item }}/bin/python3"
+  environment:
+    PYENV_ROOT: "{{ pyenv_root_abs }}"
+    TMPDIR: /var/tmp
+  loop: "{{ pyenv_versions }}"
+
+- name: Set pyenv global version
+  become: true
+  become_user: "{{ pyenv_owner }}"
+  ansible.builtin.copy:
+    content: "{{ pyenv_global }}\n"
+    dest: "{{ pyenv_root_abs }}/version"
+    owner: "{{ pyenv_owner }}"
+    group: "{{ pyenv_owner }}"
+    mode: '0644'
+
+- name: Drop pyenv profile.d integration script
+  ansible.builtin.template:
+    src: pyenv.sh.j2
+    dest: "{{ profile_d_path }}/pyenv.sh"
+    owner: "{{ pyenv_owner }}"
+    group: "{{ pyenv_owner }}"
+    mode: '0640'

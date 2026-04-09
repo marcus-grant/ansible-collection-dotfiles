@@ -1,0 +1,17 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Apply pyenv role
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.pyenv
+      vars:
+        pyenv_owner: testuser
+        pyenv_root: ~/.local/share/pyenv
+        pyenv_versions:
+          - "3.12.0"
+          - "3.11.9"
+        pyenv_global: "3.12.0"
+        profile_d_path: /home/testuser/.config/profile.d

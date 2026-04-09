@@ -1,0 +1,24 @@
+---
+pyenv_build_deps:
+  Archlinux:
+    - base-devel
+    - openssl
+    - zlib
+    - readline
+    - bzip2
+    - sqlite
+    - xz
+    - tk
+    - libffi
+  Debian:
+    - build-essential
+    - libssl-dev
+    - zlib1g-dev
+    - libreadline-dev
+    - libbz2-dev
+    - libsqlite3-dev
+    - libffi-dev
+    - xz-utils
+    - tk-dev
+    - curl
+    - wget

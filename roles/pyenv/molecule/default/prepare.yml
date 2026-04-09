@@ -1,0 +1,31 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    - name: Update apt cache (Debian)
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install git
+      ansible.builtin.package:
+        name: git
+        state: present
+
+    - name: Create testuser with home
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true
+
+    - name: Create profile.d directory for testuser
+      ansible.builtin.file:
+        path: /home/testuser/.config/profile.d
+        state: directory
+        owner: testuser
+        group: testuser
+        mode: '0750'

@@ -1,0 +1,6 @@
+---
+# defaults file for marcus_grant.dotfiles.pyenv
+# Required (no defaults): pyenv_owner, pyenv_versions, pyenv_global, profile_d_path
+pyenv_root: ~/.local/share/pyenv
+pyenv_update: false
+pyenv_repo: https://github.com/pyenv/pyenv.git

@@ -1,0 +1,77 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Resolve testuser home
+      ansible.builtin.command: getent passwd testuser
+      register: pyenv_verify_getent
+      changed_when: false
+
+    - name: Set pyenv_home and pyenv_root_abs facts
+      ansible.builtin.set_fact:
+        pyenv_home: "{{ pyenv_verify_getent.stdout.split(':')[5] }}"
+        pyenv_root_abs: "{{ pyenv_verify_getent.stdout.split(':')[5] }}/.local/share/pyenv"
+
+    - name: Check pyenv binary exists
+      become: true
+      become_user: testuser
+      ansible.builtin.command: "{{ pyenv_root_abs }}/bin/pyenv --version"
+      environment:
+        PYENV_ROOT: "{{ pyenv_root_abs }}"
+      register: pyenv_verify_bin
+      changed_when: false
+
+    - name: Assert pyenv binary works
+      ansible.builtin.assert:
+        that: pyenv_verify_bin.rc == 0
+
+    - name: List pyenv versions
+      become: true
+      become_user: testuser
+      ansible.builtin.command: "{{ pyenv_root_abs }}/bin/pyenv versions"
+      environment:
+        PYENV_ROOT: "{{ pyenv_root_abs }}"
+      register: pyenv_verify_versions
+      changed_when: false
+
+    - name: Assert 3.12.0 is installed
+      ansible.builtin.assert:
+        that: "'3.12.0' in pyenv_verify_versions.stdout"
+
+    - name: Assert 3.11.9 is installed
+      ansible.builtin.assert:
+        that: "'3.11.9' in pyenv_verify_versions.stdout"
+
+    - name: Check python version via shim
+      become: true
+      become_user: testuser
+      ansible.builtin.command: "{{ pyenv_root_abs }}/shims/python --version"
+      environment:
+        PYENV_ROOT: "{{ pyenv_root_abs }}"
+        PATH: "{{ pyenv_root_abs }}/shims:{{ pyenv_root_abs }}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      register: pyenv_verify_python
+      changed_when: false
+
+    - name: Assert python global is 3.12.0
+      ansible.builtin.assert:
+        that: "'3.12.0' in pyenv_verify_python.stdout or '3.12.0' in pyenv_verify_python.stderr"
+
+    - name: Check profile.d script exists
+      ansible.builtin.stat:
+        path: /home/testuser/.config/profile.d/pyenv.sh
+      register: pyenv_verify_profiled
+
+    - name: Assert profile.d script exists
+      ansible.builtin.assert:
+        that: pyenv_verify_profiled.stat.exists
+
+    - name: Read profile.d script
+      ansible.builtin.slurp:
+        src: /home/testuser/.config/profile.d/pyenv.sh
+      register: pyenv_verify_profiled_content
+
+    - name: Assert profile.d script contains PYENV_ROOT
+      ansible.builtin.assert:
+        that: >-
+          pyenv_root_abs in (pyenv_verify_profiled_content.content | b64decode)
