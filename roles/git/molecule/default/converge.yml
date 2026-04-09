@@ -1,0 +1,17 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Apply git role
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.git
+      vars:
+        git_owner: testuser
+        git_user_name: Test User
+        git_user_email: test@example.com
+        git_default_branch: trunk
+        git_pull_rebase: true
+        git_config_extra:
+          - {prop: "core.autocrlf", value: "false"}

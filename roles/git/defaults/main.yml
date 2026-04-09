@@ -1,0 +1,7 @@
+---
+# defaults file for marcus_grant.dotfiles.git
+# Required (no defaults): git_owner, git_user_name, git_user_email
+git_extra_packages: []
+git_default_branch: main
+git_pull_rebase: false
+git_config_extra: []

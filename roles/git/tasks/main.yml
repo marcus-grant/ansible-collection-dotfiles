@@ -1,0 +1,42 @@
+---
+# tasks file for marcus_grant.dotfiles.git
+- name: Assert required variables are set
+  ansible.builtin.assert:
+    that:
+      - git_owner is defined and git_owner | length > 0
+      - git_user_name is defined and git_user_name | length > 0
+      - git_user_email is defined and git_user_email | length > 0
+    fail_msg: "git_owner, git_user_name, and git_user_email are all required"
+
+- name: Resolve home directory for git_owner
+  ansible.builtin.command: "getent passwd {{ git_owner }}"
+  register: git_getent
+  changed_when: false
+
+- name: Set git_home fact
+  ansible.builtin.set_fact:
+    git_home: "{{ git_getent.stdout.split(':')[5] }}"
+
+- name: Install git and extra packages
+  become: true
+  become_user: root
+  ansible.builtin.package:
+    name: "{{ ['git'] + git_extra_packages }}"
+    state: present
+
+- name: Set global git config entries
+  become: true
+  become_user: "{{ git_owner }}"
+  community.general.git_config:
+    name: "{{ git_cfg.prop }}"
+    value: "{{ git_cfg.value }}"
+    scope: global
+  loop: >-
+    {{ [
+      {'prop': 'user.name',          'value': git_user_name},
+      {'prop': 'user.email',         'value': git_user_email},
+      {'prop': 'init.defaultBranch', 'value': git_default_branch},
+      {'prop': 'pull.rebase',        'value': git_pull_rebase | ternary('true', 'false')},
+    ] + git_config_extra }}
+  loop_control:
+    loop_var: git_cfg

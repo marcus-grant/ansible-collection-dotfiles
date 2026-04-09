@@ -1,0 +1,18 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    - name: Update apt cache (Debian)
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Create testuser with home
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true

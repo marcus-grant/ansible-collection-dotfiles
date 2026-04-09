@@ -1,0 +1,68 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check git version
+      ansible.builtin.command: git --version
+      register: git_verify_version
+      changed_when: false
+
+    - name: Assert git is installed
+      ansible.builtin.assert:
+        that: git_verify_version.rc == 0
+
+    - name: Get git user.name config
+      become: true
+      become_user: testuser
+      ansible.builtin.command: git config --global --get user.name
+      register: git_verify_name
+      changed_when: false
+
+    - name: Assert git user.name
+      ansible.builtin.assert:
+        that: git_verify_name.stdout == 'Test User'
+
+    - name: Get git user.email config
+      become: true
+      become_user: testuser
+      ansible.builtin.command: git config --global --get user.email
+      register: git_verify_email
+      changed_when: false
+
+    - name: Assert git user.email
+      ansible.builtin.assert:
+        that: git_verify_email.stdout == 'test@example.com'
+
+    - name: Get git init.defaultBranch config
+      become: true
+      become_user: testuser
+      ansible.builtin.command: git config --global --get init.defaultBranch
+      register: git_verify_branch
+      changed_when: false
+
+    - name: Assert git init.defaultBranch
+      ansible.builtin.assert:
+        that: git_verify_branch.stdout == 'trunk'
+
+    - name: Get git pull.rebase config
+      become: true
+      become_user: testuser
+      ansible.builtin.command: git config --global --get pull.rebase
+      register: git_verify_rebase
+      changed_when: false
+
+    - name: Assert git pull.rebase
+      ansible.builtin.assert:
+        that: git_verify_rebase.stdout == 'true'
+
+    - name: Get git core.autocrlf config
+      become: true
+      become_user: testuser
+      ansible.builtin.command: git config --global --get core.autocrlf
+      register: git_verify_autocrlf
+      changed_when: false
+
+    - name: Assert git core.autocrlf
+      ansible.builtin.assert:
+        that: git_verify_autocrlf.stdout == 'false'
