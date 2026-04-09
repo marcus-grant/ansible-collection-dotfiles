@@ -9,11 +9,5 @@
         name: marcus_grant.dotfiles.pip
       vars:
         pip_owner: testuser
-        pip_python: /home/testuser/.local/share/pyenv/shims/python
-        pyenv_root_abs: /home/testuser/.local/share/pyenv
         pip_packages:
-          - pipx
           - httpie
-        pipx_packages:
-          - cowsay
-        profile_d_path: /home/testuser/.config/profile.d

@@ -1,5 +1,8 @@
 ---
-# defaults file for pip
-pip_package: python3-pip
-pip_executable: "{{ 'pip3' if pip_package.startswitch('python3') else 'pip' }}"
-pip_installed_packages: []
+# defaults file for marcus_grant.dotfiles.pip
+# Required (no default): pip_owner
+pip_python: "{{ pyenv_root_abs ~ '/shims/python' if pyenv_root_abs is defined else '/usr/bin/python3' }}"
+pip_packages: []
+pipx_packages: []
+pipx_default_python: "{{ pip_python }}"
+pipx_bin_dir: ~/.local/bin

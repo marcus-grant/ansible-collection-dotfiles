@@ -1,0 +1,91 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    - name: Update apt cache (Debian)
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install git and pyenv build deps (Debian)
+      ansible.builtin.apt:
+        name:
+          - git
+          - build-essential
+          - libssl-dev
+          - zlib1g-dev
+          - libreadline-dev
+          - libbz2-dev
+          - libsqlite3-dev
+          - libffi-dev
+          - xz-utils
+          - tk-dev
+          - curl
+          - wget
+        state: present
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Update pacman cache (Archlinux)
+      ansible.builtin.command: pacman -Syu --noconfirm
+      when: ansible_facts['os_family'] == 'Archlinux'
+      changed_when: true
+
+    - name: Install git and pyenv build deps (Archlinux)
+      ansible.builtin.package:
+        name:
+          - git
+          - base-devel
+          - openssl
+          - zlib
+          - readline
+          - bzip2
+          - sqlite
+          - xz
+          - tk
+          - libffi
+        state: present
+      when: ansible_facts['os_family'] == 'Archlinux'
+
+    - name: Create testuser with home
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true
+
+    - name: Create profile.d directory for testuser
+      ansible.builtin.file:
+        path: /home/testuser/.config/profile.d
+        state: directory
+        owner: testuser
+        group: testuser
+        mode: '0750'
+
+    - name: Clone pyenv as testuser
+      become: true
+      become_user: testuser
+      ansible.builtin.git:
+        repo: https://github.com/pyenv/pyenv.git
+        dest: /home/testuser/.local/share/pyenv
+        update: false
+
+    - name: Install Python 3.12.0 via pyenv
+      become: true
+      become_user: testuser
+      ansible.builtin.command: /home/testuser/.local/share/pyenv/bin/pyenv install 3.12.0
+      args:
+        creates: /home/testuser/.local/share/pyenv/versions/3.12.0/bin/python3
+      environment:
+        PYENV_ROOT: /home/testuser/.local/share/pyenv
+        TMPDIR: /var/tmp
+
+    - name: Set pyenv global to 3.12.0
+      ansible.builtin.copy:
+        content: "3.12.0\n"
+        dest: /home/testuser/.local/share/pyenv/version
+        owner: testuser
+        group: testuser
+        mode: '0644'

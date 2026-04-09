@@ -1,2 +1,4 @@
 ---
-# vars file for pip
+pip_system_packages:
+  Archlinux: [python-pip]
+  Debian: [python3-pip]

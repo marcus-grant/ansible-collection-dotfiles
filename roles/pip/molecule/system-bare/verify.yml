@@ -1,0 +1,24 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check httpie is installed
+      become: true
+      become_user: testuser
+      ansible.builtin.command: /usr/bin/python3 -m pip show httpie
+      register: pip_verify_httpie
+      changed_when: false
+
+    - name: Assert httpie is installed
+      ansible.builtin.assert:
+        that: pip_verify_httpie.rc == 0
+
+    - name: Check profile.d script is absent
+      ansible.builtin.stat:
+        path: /home/testuser/.config/profile.d/pip.sh
+      register: pip_verify_profiled
+
+    - name: Assert no profile.d script was created
+      ansible.builtin.assert:
+        that: not pip_verify_profiled.stat.exists

@@ -1,16 +1,91 @@
 ---
-# tasks file for pip
-- name: Ensure Pip is installed.
-  package:
-    name: "{{ pip_package }}"
+# tasks file for marcus_grant.dotfiles.pip
+- name: Assert required variables are set
+  ansible.builtin.assert:
+    that:
+      - pip_owner is defined and pip_owner | length > 0
+      - >-
+        pipx_packages | length == 0 or
+        pip_packages | select('match', '^pipx') | list | length > 0
+      - >-
+        pyenv_root_abs is defined or
+        ansible_os_family in pip_system_packages
+    fail_msg: >-
+      pip_owner is required; if pipx_packages is non-empty, pip_packages must
+      include pipx; ansible_os_family must be one of
+      {{ pip_system_packages.keys() | list }} when not using pyenv
+
+- name: Resolve home directory for pip_owner
+  ansible.builtin.command: "getent passwd {{ pip_owner }}"
+  register: pip_getent
+  changed_when: false
+
+- name: Set pip_home and pipx_bin_dir_abs facts
+  ansible.builtin.set_fact:
+    pip_home: "{{ pip_getent.stdout.split(':')[5] }}"
+    pipx_bin_dir_abs: "{{ pipx_bin_dir | replace('~', pip_getent.stdout.split(':')[5]) }}"
+
+- name: Set pip_pipx_exe fact
+  ansible.builtin.set_fact:
+    pip_pipx_exe: >-
+      {{ pyenv_root_abs ~ '/shims/pipx'
+         if pyenv_root_abs is defined
+         else pipx_bin_dir_abs ~ '/pipx' }}
+
+- name: Install system pip
+  become: true
+  become_user: root
+  ansible.builtin.package:
+    name: "{{ pip_system_packages[ansible_os_family] }}"
     state: present
+  when: pyenv_root_abs is not defined
 
-- name: Ensure pip_installed_packages are installed.
-  pip:
-    name: "{{ item.name | default(item) }}"
-    version: "{{ item.version | default(omit) }}"
-    virtualenv: "{{ item.virtualenv | default(omit) }}"
-    state: "{{ item.state | default(omit) }}"
-    executable: "{{ pip_executables }}"
-  loop: "{{ pip_installed_packages }}"
+- name: Install pip packages
+  become: true
+  become_user: "{{ pip_owner }}"
+  ansible.builtin.command: >-
+    {{ pip_python }} -m pip install
+    {{ '--user --break-system-packages' if pyenv_root_abs is not defined else '' }}
+    {{ item }}
+  register: pip_install_result
+  changed_when: "'Successfully installed' in pip_install_result.stdout"
+  loop: "{{ pip_packages }}"
 
+- name: pyenv rehash after pip installs
+  become: true
+  become_user: "{{ pip_owner }}"
+  ansible.builtin.command: "{{ pyenv_root_abs }}/bin/pyenv rehash"
+  changed_when: false
+  when: pyenv_root_abs is defined
+
+- name: Install pipx packages
+  become: true
+  become_user: "{{ pip_owner }}"
+  ansible.builtin.command: "{{ pip_pipx_exe }} install {{ item }}"
+  environment:
+    PIPX_DEFAULT_PYTHON: "{{ pipx_default_python }}"
+    PIPX_BIN_DIR: "{{ pipx_bin_dir_abs }}"
+    HOME: "{{ pip_home }}"
+  register: pipx_install_result
+  failed_when: >-
+    pipx_install_result.rc != 0 and
+    'already seems to be installed' not in pipx_install_result.stdout
+  changed_when: "'already seems to be installed' not in pipx_install_result.stdout"
+  loop: "{{ pipx_packages }}"
+  when: pipx_packages | length > 0
+
+- name: pyenv rehash after pipx installs
+  become: true
+  become_user: "{{ pip_owner }}"
+  ansible.builtin.command: "{{ pyenv_root_abs }}/bin/pyenv rehash"
+  changed_when: false
+  when: pyenv_root_abs is defined and pipx_packages | length > 0
+
+- name: Drop pip profile.d integration script
+  ansible.builtin.template:
+    src: pip.sh.j2
+    dest: "{{ profile_d_path }}/pip.sh"
+    owner: "{{ pip_owner }}"
+    group: "{{ pip_owner }}"
+    mode: '0640'
+  when: profile_d_path is defined

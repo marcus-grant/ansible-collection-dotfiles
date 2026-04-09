@@ -1,10 +1,57 @@
 ---
-# This is an example playbook to execute Ansible tests.
-
 - name: Verify
   hosts: all
   gather_facts: false
   tasks:
-  - name: Example assertion
-    assert:
-      that: true
+    - name: Check httpie is installed
+      become: true
+      become_user: testuser
+      ansible.builtin.command: >-
+        /home/testuser/.local/share/pyenv/shims/python -m pip show httpie
+      environment:
+        PYENV_ROOT: /home/testuser/.local/share/pyenv
+      register: pip_verify_httpie
+      changed_when: false
+
+    - name: Assert httpie is installed
+      ansible.builtin.assert:
+        that: pip_verify_httpie.rc == 0
+
+    - name: Check cowsay binary exists
+      ansible.builtin.stat:
+        path: /home/testuser/.local/bin/cowsay
+      register: pip_verify_cowsay
+
+    - name: Assert cowsay binary exists
+      ansible.builtin.assert:
+        that: pip_verify_cowsay.stat.exists
+
+    - name: Check profile.d script exists
+      ansible.builtin.stat:
+        path: /home/testuser/.config/profile.d/pip.sh
+      register: pip_verify_profiled
+
+    - name: Assert profile.d script exists
+      ansible.builtin.assert:
+        that: pip_verify_profiled.stat.exists
+
+    - name: Assert profile.d script mode and owner
+      ansible.builtin.assert:
+        that:
+          - pip_verify_profiled.stat.mode == '0640'
+          - pip_verify_profiled.stat.pw_name == 'testuser'
+
+    - name: Read profile.d script
+      ansible.builtin.slurp:
+        src: /home/testuser/.config/profile.d/pip.sh
+      register: pip_verify_profiled_content
+
+    - name: Assert profile.d script contains PIPX_DEFAULT_PYTHON
+      ansible.builtin.assert:
+        that: >-
+          'PIPX_DEFAULT_PYTHON' in (pip_verify_profiled_content.content | b64decode)
+
+    - name: Assert profile.d script contains PIPX_BIN_DIR
+      ansible.builtin.assert:
+        that: >-
+          'PIPX_BIN_DIR' in (pip_verify_profiled_content.content | b64decode)
