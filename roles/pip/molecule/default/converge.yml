@@ -12,7 +12,6 @@
         pip_python: /home/testuser/.local/share/pyenv/shims/python
         pyenv_root_abs: /home/testuser/.local/share/pyenv
         pip_packages:
-          - pipx
           - httpie
         pipx_packages:
           - cowsay

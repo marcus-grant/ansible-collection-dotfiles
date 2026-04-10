@@ -5,14 +5,10 @@
     that:
       - pip_owner is defined and pip_owner | length > 0
       - >-
-        pipx_packages | length == 0 or
-        pip_packages | select('match', '^pipx') | list | length > 0
-      - >-
         pyenv_root_abs is defined or
         ansible_os_family in pip_system_packages
     fail_msg: >-
-      pip_owner is required; if pipx_packages is non-empty, pip_packages must
-      include pipx; ansible_os_family must be one of
+      pip_owner is required; ansible_os_family must be one of
       {{ pip_system_packages.keys() | list }} when not using pyenv
 
 - name: Resolve home directory for pip_owner
@@ -49,7 +45,9 @@
     {{ item }}
   register: pip_install_result
   changed_when: "'Successfully installed' in pip_install_result.stdout"
-  loop: "{{ pip_packages }}"
+  loop: >-
+    {{ (['pipx'] if (pip_install_pipx or pipx_packages | length > 0)
+        and 'pipx' not in pip_packages else []) + pip_packages }}
 
 - name: pyenv rehash after pip installs
   become: true

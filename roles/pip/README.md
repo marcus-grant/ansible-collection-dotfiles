@@ -14,8 +14,9 @@ None beyond a supported OS. System pip is installed automatically when not using
 |---|---|---|---|---|
 | `pip_owner` | string | — | yes | System user to install packages for. Home resolved via `getent`. |
 | `pip_python` | string | auto | no | Python interpreter path. Defaults to `pyenv_root_abs/shims/python` if `pyenv_root_abs` is defined (set by pyenv role), otherwise `/usr/bin/python3`. |
-| `pip_packages` | list | `[]` | no | Pip packages to install. Supports version syntax (`httpie==3.2.0`). Must include `pipx` if `pipx_packages` is non-empty. |
-| `pipx_packages` | list | `[]` | no | Pipx packages to install. Requires `pipx` in `pip_packages`. |
+| `pip_packages` | list | `[]` | no | Pip packages to install. Supports version syntax (`httpie==3.2.0`). |
+| `pip_install_pipx` | bool | `false` | no | Explicitly install pipx even when `pipx_packages` is empty. Pipx is always installed automatically when `pipx_packages` is non-empty. |
+| `pipx_packages` | list | `[]` | no | Pipx packages to install. pipx is installed automatically — no need to add it to `pip_packages`. |
 | `pipx_default_python` | string | `{{ pip_python }}` | no | Python interpreter for pipx to use when creating package environments. |
 | `pipx_bin_dir` | string | `~/.local/bin` | no | Directory pipx installs entry-point scripts into. `~` expanded against the owner's home. |
 | `profile_d_path` | string | — | no | If defined, a `pip.sh` drop-in is written here exporting `PIPX_DEFAULT_PYTHON`, `PIPX_BIN_DIR`, and prepending `pipx_bin_dir` to `PATH`. Provided by the `profile` role. |

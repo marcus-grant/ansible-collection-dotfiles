@@ -6,3 +6,4 @@ pip_packages: []
 pipx_packages: []
 pipx_default_python: "{{ pip_python }}"
 pipx_bin_dir: ~/.local/bin
+pip_install_pipx: false
