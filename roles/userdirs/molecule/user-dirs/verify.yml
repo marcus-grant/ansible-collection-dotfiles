@@ -1,0 +1,56 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Stat user-dirs.dirs
+      ansible.builtin.stat:
+        path: /root/.xdg-test/user-dirs.dirs
+      register: userdirs_verify_dirs_file
+
+    - name: Assert user-dirs.dirs exists, owned by root, mode 0644
+      ansible.builtin.assert:
+        that:
+          - userdirs_verify_dirs_file.stat.exists
+          - userdirs_verify_dirs_file.stat.pw_name == 'root'
+          - userdirs_verify_dirs_file.stat.mode == '0644'
+
+    - name: Read user-dirs.dirs
+      ansible.builtin.slurp:
+        src: /root/.xdg-test/user-dirs.dirs
+      register: userdirs_verify_dirs_content
+
+    - name: Assert user-dirs.dirs contains XDG_DOCUMENTS_DIR
+      ansible.builtin.assert:
+        that: >-
+          'XDG_DOCUMENTS_DIR="$HOME/Docs"'
+          in (userdirs_verify_dirs_content.content | b64decode)
+
+    - name: Assert user-dirs.dirs contains XDG_PICTURES_DIR
+      ansible.builtin.assert:
+        that: >-
+          'XDG_PICTURES_DIR="$HOME/Pics"'
+          in (userdirs_verify_dirs_content.content | b64decode)
+
+    - name: Assert user-dirs.dirs does not contain hardcoded .config path
+      ansible.builtin.assert:
+        that: >-
+          '$HOME/.config' not in (userdirs_verify_dirs_content.content | b64decode)
+
+    - name: Stat user-dirs.locale
+      ansible.builtin.stat:
+        path: /root/.xdg-test/user-dirs.locale
+      register: userdirs_verify_locale_file
+
+    - name: Assert user-dirs.locale exists
+      ansible.builtin.assert:
+        that: userdirs_verify_locale_file.stat.exists
+
+    - name: Read user-dirs.locale
+      ansible.builtin.slurp:
+        src: /root/.xdg-test/user-dirs.locale
+      register: userdirs_verify_locale_content
+
+    - name: Assert user-dirs.locale content is correct
+      ansible.builtin.assert:
+        that: (userdirs_verify_locale_content.content | b64decode) == "en_US\n"

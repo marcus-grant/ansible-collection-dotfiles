@@ -13,5 +13,6 @@
       ansible.builtin.include_role:
         name: marcus_grant.dotfiles.userdirs
       vars:
+        userdirs_owner: root
         userdirs_custom_dirs:
           - "{{ ansible_env.HOME }}/testdir"

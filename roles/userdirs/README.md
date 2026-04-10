@@ -12,26 +12,43 @@ None
 Below is a table of variables,
 some optional usually with default values or necessary for the role to function.
 
-| Variable                 | Default        | Choices    | Comments                             |
-| ------------------------ | -------------- | -----------| ------------------------------------ |
-| userdirs_xdg_profile_d   | true           | bool       | Create `XDG_` envars. profile.d file |
-| userdirs_profile_d_path  | *              | str(dir)   | Path to directory of profile.d see * |
-| userdirs_xdg_mkdirs      | true           | bool       | Ensure below `XDG_` dirs exist       |
-| userdirs_xdg_bin_home    | .local/bin     | str(dir)+  | Custom value for XDG_BIN_HOME        |
-| userdirs_xdg_data_home   | .local/share   | str(dir)+  | Custom value for XDG_DATA_HOME       |
-| userdirs_xdg_config_home | .config        | str(dir)+  | Custom value for XDG_CONFIG_HOME     |
-| userdirs_xdg_cache_home  | .cache         | str(dir)+  | Custom value for XDG_CACHE_HOME      |
-| userdirs_xdg_state_home  | .local/state   | str(dir)+  | Custom value for XDG_STATE_HOME      |
-| userdirs_custom_dirs     | []             | [str(dir)] | List of paths to create extra dirs   |
+| Variable                      | Default        | Choices    | Comments                                      |
+| ----------------------------- | -------------- | -----------| --------------------------------------------- |
+| userdirs_owner                | *required*     | str        | User whose directories are managed            |
+| userdirs_xdg_profile_d        | true           | bool       | Create `XDG_` envars. profile.d file          |
+| userdirs_profile_d_path       | *              | str(dir)   | Path to directory of profile.d see *          |
+| userdirs_xdg_mkdirs           | true           | bool       | Ensure below `XDG_` dirs exist                |
+| userdirs_xdg_bin_home         | .local/bin     | str(dir)+  | Custom value for XDG_BIN_HOME                 |
+| userdirs_xdg_data_home        | .local/share   | str(dir)+  | Custom value for XDG_DATA_HOME                |
+| userdirs_xdg_config_home      | .config        | str(dir)+  | Custom value for XDG_CONFIG_HOME              |
+| userdirs_xdg_cache_home       | .cache         | str(dir)+  | Custom value for XDG_CACHE_HOME               |
+| userdirs_xdg_state_home       | .local/state   | str(dir)+  | Custom value for XDG_STATE_HOME               |
+| userdirs_custom_dirs          | []             | [str(dir)] | List of absolute paths to create extra dirs   |
+| userdirs_user_dirs_enabled    | false          | bool       | Template user-dirs.dirs and user-dirs.locale  |
+| userdirs_user_dirs            | **             | dict       | XDG user content dir mappings, see **         |
+| userdirs_user_dirs_locale     | en_US          | str        | Locale written to user-dirs.locale            |
 
-> **\***: Default of `userdirs_profile_d_path` can be either of these:
-> `profile_d_path` a role variable to `marcus_grant.dotfiles.profile`,
-> `~/.config/profile.d` this is also the default value to `profile_d_path`.
-> If both `userdirs_profile_d_path` & `profile_d_path` are undefined,
-> the default to `profile_d_path` of `~/.config/profile.d` gets used.
+> **\***: Default of `userdirs_profile_d_path` uses a three-tier fallback:
+> 1. `userdirs_profile_d_path` — explicit override, takes precedence
+> 2. `profile_d_path` — provided by `marcus_grant.dotfiles.profile`
+> 3. Computed fallback: `<home>/{{ userdirs_xdg_config_home }}/profile.d`
 
-> **+**: These variables are relative paths to whatever the user home is.
-> In linux this is usually `/home/<user>`, in macOS it's `/Users/<user>`.
+> **+**: These variables are relative paths to the owner's home directory.
+> In Linux this is usually `/home/<user>`, in macOS it's `/Users/<user>`.
+
+> **\*\***: Default value for `userdirs_user_dirs`:
+> ```yaml
+> documents: Documents
+> pictures: Pictures
+> videos: Videos
+> music: Music
+> download: Downloads
+> desktop: Desktop
+> templates: Templates
+> publicshare: Public
+> ```
+> Keys map to `XDG_<KEY>_DIR` entries. Values are relative to `$HOME`.
+> Only written when `userdirs_user_dirs_enabled: true`.
 
 ### Role Variables Explanation
 
@@ -47,6 +64,11 @@ Then the variables `userdirs_xdg_{bin_home,data_home,config_home,cache_home,stat
 define the paths to their correspondingly named XDG variables as exported environment vars.
 
 If `userdirs_xdg_mkdirs` is enabled the role will also ensure those directories exist.
+
+When `userdirs_user_dirs_enabled: true`, the role templates
+`{{ userdirs_xdg_config_home }}/user-dirs.dirs` with the mappings from
+`userdirs_user_dirs`, and writes `user-dirs.locale` alongside it. This prevents
+`xdg-user-dirs-update` from regenerating the file on login.
 
 ## Dependencies
 
@@ -64,15 +86,36 @@ you must explicitly run `marcus_grant.dotfiles.profile` first.
 
 ```yaml
 - hosts: all
-  vars:
-    profile_user: "{{ ansible_user_id }}"
-    profile_group: "{{ ansible_user_id }}"
   roles:
     - name: marcus_grant.dotfiles.profile
+      vars:
+        profile_user: alice
+        profile_group: alice
     - name: marcus_grant.dotfiles.userdirs
       vars:
+        userdirs_owner: alice
         userdirs_custom_dirs:
-          - "{{ ansible_env.HOME }}/projects"
+          - /home/alice/projects
+```
+
+### With custom XDG user content dirs
+
+```yaml
+- name: Apply userdirs role
+  ansible.builtin.include_role:
+    name: marcus_grant.dotfiles.userdirs
+  vars:
+    userdirs_owner: alice
+    userdirs_user_dirs_enabled: true
+    userdirs_user_dirs:
+      documents: Documents
+      pictures: Media/Photos
+      videos: Media/Videos
+      music: Media/Music
+      download: Downloads
+      desktop: Desktop
+      templates: Templates
+      publicshare: Public
 ```
 
 ## License

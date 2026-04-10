@@ -1,0 +1,25 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Apply userdirs role
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.userdirs
+      vars:
+        userdirs_owner: root
+        userdirs_xdg_profile_d: false
+        userdirs_xdg_config_home: .xdg-test
+        userdirs_user_dirs_enabled: true
+        userdirs_user_dirs:
+          documents: Docs
+          pictures: Pics
+          videos: Vids
+          music: Tunes
+          download: Down
+          desktop: Desk
+          templates: Tmpl
+          publicshare: Pub
+        userdirs_user_dirs_locale: en_US
+        # userdirs_xdg_mkdirs defaults true — mkdirs task creates .xdg-test before template writes into it

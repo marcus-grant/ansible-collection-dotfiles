@@ -1,5 +1,6 @@
 ---
 # defaults file for marcus_grant.dotfiles.userdirs
+# Required (no default): userdirs_owner
 userdirs_xdg_profile_d: true
 userdirs_xdg_mkdirs: true
 
@@ -11,3 +12,15 @@ userdirs_xdg_cache_home: .cache
 userdirs_xdg_state_home: .local/state
 
 userdirs_custom_dirs: []
+
+userdirs_user_dirs_enabled: false
+userdirs_user_dirs:
+  documents: Documents
+  pictures: Pictures
+  videos: Videos
+  music: Music
+  download: Downloads
+  desktop: Desktop
+  templates: Templates
+  publicshare: Public
+userdirs_user_dirs_locale: en_US

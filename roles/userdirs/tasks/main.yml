@@ -1,39 +1,83 @@
 ---
 # tasks file for marcus_grant.dotfiles.userdirs
-- name: Set fact for profile_d path to use by checking two vars & final default
+- name: Assert required variables are set
+  ansible.builtin.assert:
+    that:
+      - userdirs_owner is defined and userdirs_owner | length > 0
+    fail_msg: userdirs_owner is required
+
+- name: Resolve home directory for userdirs_owner
+  ansible.builtin.command: "getent passwd {{ userdirs_owner }}"
+  register: userdirs_getent
+  changed_when: false
+
+- name: Set userdirs_home fact
   ansible.builtin.set_fact:
-    userdirs_profd: "{{ profile_d_path | default('~/.config/profile.d') }}"
+    userdirs_home: "{{ userdirs_getent.stdout.split(':')[5] }}"
+
+- name: Set fact for profile_d path
+  ansible.builtin.set_fact:
+    userdirs_profd: >-
+      {{ profile_d_path
+         | default(userdirs_home ~ '/' ~ userdirs_xdg_config_home ~ '/profile.d') }}
 
 - name: Template profile.d/10-userdirs.sh partial profile to be sourced
+  become: true
+  become_user: "{{ userdirs_owner }}"
   ansible.builtin.template:
     src: userdirs.sh.j2
     dest: "{{ userdirs_profile_d_path | default(userdirs_profd) }}/10-userdirs.sh"
-    owner: "{{ ansible_user_id }}"
-    mode: 0640
+    owner: "{{ userdirs_owner }}"
+    mode: '0640'
   when: userdirs_xdg_profile_d
 
 - name: Ensure XDG directories exist
+  become: true
+  become_user: "{{ userdirs_owner }}"
   ansible.builtin.file:
-    path: "{{ userdirs_xdg_dir_path }}"
+    path: "{{ userdirs_home }}/{{ userdirs_xdg_dir_frag }}"
     state: directory
+    owner: "{{ userdirs_owner }}"
     mode: '0750'
-  loop_control: {loop_var: userdirs_xdg_dir_path}
+  loop_control: {loop_var: userdirs_xdg_dir_frag}
   loop:
-    - "~/{{ userdirs_xdg_bin_home }}"
-    - "~/{{ userdirs_xdg_data_home }}"
-    - "~/{{ userdirs_xdg_config_home }}"
-    - "~/{{ userdirs_xdg_cache_home }}"
-    - "~/{{ userdirs_xdg_state_home }}"
+    - "{{ userdirs_xdg_bin_home }}"
+    - "{{ userdirs_xdg_data_home }}"
+    - "{{ userdirs_xdg_config_home }}"
+    - "{{ userdirs_xdg_cache_home }}"
+    - "{{ userdirs_xdg_state_home }}"
   when:
     - userdirs_xdg_mkdirs
-    - userdirs_xdg_dir_path | length > 0
+    - userdirs_xdg_dir_frag | length > 0
 
 - name: Create custom directories
+  become: true
+  become_user: "{{ userdirs_owner }}"
   ansible.builtin.file:
     path: "{{ userdirs_custom_dir }}"
     state: directory
-    owner: "{{ ansible_user_id }}"
+    owner: "{{ userdirs_owner }}"
     mode: '0750'
   loop_control: {loop_var: userdirs_custom_dir}
   loop: "{{ userdirs_custom_dirs }}"
   when: userdirs_custom_dirs | length > 0
+
+- name: Template user-dirs.dirs
+  become: true
+  become_user: "{{ userdirs_owner }}"
+  ansible.builtin.template:
+    src: user-dirs.dirs.j2
+    dest: "{{ userdirs_home }}/{{ userdirs_xdg_config_home }}/user-dirs.dirs"
+    owner: "{{ userdirs_owner }}"
+    mode: '0644'
+  when: userdirs_user_dirs_enabled
+
+- name: Write user-dirs.locale
+  become: true
+  become_user: "{{ userdirs_owner }}"
+  ansible.builtin.copy:
+    content: "{{ userdirs_user_dirs_locale }}\n"
+    dest: "{{ userdirs_home }}/{{ userdirs_xdg_config_home }}/user-dirs.locale"
+    owner: "{{ userdirs_owner }}"
+    mode: '0644'
+  when: userdirs_user_dirs_enabled

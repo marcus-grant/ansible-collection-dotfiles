@@ -149,3 +149,21 @@
     - name: Assert custom testdir exists
       ansible.builtin.assert:
         that: testdir.stat.exists
+
+    - name: Stat user-dirs.dirs (should not exist)
+      ansible.builtin.stat:
+        path: /root/.config/user-dirs.dirs
+      register: userdirs_verify_user_dirs_file
+
+    - name: Assert user-dirs.dirs is absent when disabled
+      ansible.builtin.assert:
+        that: not userdirs_verify_user_dirs_file.stat.exists
+
+    - name: Stat user-dirs.locale (should not exist)
+      ansible.builtin.stat:
+        path: /root/.config/user-dirs.locale
+      register: userdirs_verify_locale_file
+
+    - name: Assert user-dirs.locale is absent when disabled
+      ansible.builtin.assert:
+        that: not userdirs_verify_locale_file.stat.exists

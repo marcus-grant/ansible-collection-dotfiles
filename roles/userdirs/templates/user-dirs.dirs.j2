@@ -1,0 +1,4 @@
+# This file is written by ansible role marcus_grant.dotfiles.userdirs
+{% for key, val in userdirs_user_dirs.items() %}
+XDG_{{ key | upper }}_DIR="$HOME/{{ val }}"
+{% endfor %}
