@@ -1,0 +1,10 @@
+python-preference = "{{ uv_python_preference }}"
+{% if uv_link_mode is defined and uv_link_mode %}
+link-mode = "{{ uv_link_mode }}"
+{% endif %}
+{% if uv_cache_dir is defined and uv_cache_dir %}
+cache-dir = "{{ uv_cache_dir }}"
+{% endif %}
+{% for key, value in uv_config_extra.items() %}
+{{ key }} = "{{ value }}"
+{% endfor %}

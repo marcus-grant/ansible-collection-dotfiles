@@ -1,0 +1,57 @@
+---
+# tasks file for marcus_grant.dotfiles.uv
+- name: Assert required variables are set
+  ansible.builtin.assert:
+    that:
+      - uv_owner is defined and uv_owner | length > 0
+    fail_msg: uv_owner is required
+
+- name: Resolve home directory for uv_owner
+  ansible.builtin.command: "getent passwd {{ uv_owner }}"
+  register: uv_getent
+  changed_when: false
+
+- name: Set uv_home and uv_config_dir facts
+  ansible.builtin.set_fact:
+    uv_home: "{{ uv_getent.stdout.split(':')[5] }}"
+    uv_config_dir: >-
+      {{ uv_getent.stdout.split(':')[5] }}/{{ userdirs_xdg_config_home | default('.config') }}/uv
+
+- name: Ensure uv config directory exists
+  ansible.builtin.file:
+    path: "{{ uv_config_dir }}"
+    state: directory
+    owner: "{{ uv_owner }}"
+    group: "{{ uv_owner }}"
+    mode: '0755'
+
+- name: Install uv via pipx
+  become: true
+  become_user: "{{ uv_owner }}"
+  ansible.builtin.command: "{{ pip_pipx_exe }} install uv"
+  environment:
+    PIPX_DEFAULT_PYTHON: >-
+      {{ pyenv_root_abs ~ '/shims/python'
+         if pyenv_root_abs is defined
+         else '/usr/bin/python3' }}
+    HOME: "{{ uv_home }}"
+  register: uv_pipx_install
+  failed_when: >-
+    uv_pipx_install.rc != 0 and
+    'already seems to be installed' not in uv_pipx_install.stdout
+  changed_when: "'already seems to be installed' not in uv_pipx_install.stdout"
+
+- name: pyenv rehash after uv install
+  become: true
+  become_user: "{{ uv_owner }}"
+  ansible.builtin.command: "{{ pyenv_root_abs }}/bin/pyenv rehash"
+  changed_when: false
+  when: pyenv_root_abs is defined
+
+- name: Template uv.toml
+  ansible.builtin.template:
+    src: uv.toml.j2
+    dest: "{{ uv_config_dir }}/uv.toml"
+    owner: "{{ uv_owner }}"
+    group: "{{ uv_owner }}"
+    mode: '0644'

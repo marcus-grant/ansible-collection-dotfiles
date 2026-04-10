@@ -1,0 +1,18 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Apply uv role
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.uv
+      vars:
+        uv_owner: testuser
+        pyenv_root_abs: /home/testuser/.local/share/pyenv
+        pip_pipx_exe: /home/testuser/.local/share/pyenv/shims/pipx
+        userdirs_xdg_config_home: .config
+        uv_python_preference: only-managed
+        uv_link_mode: hardlink
+        uv_config_extra:
+          concurrent-downloads: "4"

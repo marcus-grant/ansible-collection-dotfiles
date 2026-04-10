@@ -1,0 +1,7 @@
+---
+# defaults file for marcus_grant.dotfiles.uv
+# Required (no default): uv_owner
+uv_python_preference: only-managed
+# uv_link_mode: unset — omit from defaults; defined only overrides toml
+# uv_cache_dir: unset — omit from defaults; defined only overrides toml
+uv_config_extra: {}

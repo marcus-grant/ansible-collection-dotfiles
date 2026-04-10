@@ -1,0 +1,55 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check uv version
+      become: true
+      become_user: testuser
+      ansible.builtin.command: /home/testuser/.local/bin/uv --version
+      register: uv_verify_version
+      changed_when: false
+
+    - name: Assert uv --version succeeds
+      ansible.builtin.assert:
+        that: uv_verify_version.rc == 0
+
+    - name: Stat uv.toml
+      ansible.builtin.stat:
+        path: /home/testuser/.config/uv/uv.toml
+      register: uv_verify_toml
+
+    - name: Assert uv.toml exists, owned by testuser, mode 0644
+      ansible.builtin.assert:
+        that:
+          - uv_verify_toml.stat.exists
+          - uv_verify_toml.stat.pw_name == 'testuser'
+          - uv_verify_toml.stat.mode == '0644'
+
+    - name: Read uv.toml
+      ansible.builtin.slurp:
+        src: /home/testuser/.config/uv/uv.toml
+      register: uv_verify_toml_content
+
+    - name: Assert uv.toml contains python-preference
+      ansible.builtin.assert:
+        that: >-
+          'python-preference = "only-managed"'
+          in (uv_verify_toml_content.content | b64decode)
+
+    - name: Assert uv.toml contains link-mode
+      ansible.builtin.assert:
+        that: >-
+          'link-mode = "hardlink"'
+          in (uv_verify_toml_content.content | b64decode)
+
+    - name: Assert uv.toml contains concurrent-downloads
+      ansible.builtin.assert:
+        that: >-
+          'concurrent-downloads = "4"'
+          in (uv_verify_toml_content.content | b64decode)
+
+    - name: Assert uv.toml does not contain cache-dir
+      ansible.builtin.assert:
+        that: >-
+          'cache-dir' not in (uv_verify_toml_content.content | b64decode)
