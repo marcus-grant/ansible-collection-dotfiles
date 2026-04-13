@@ -111,3 +111,15 @@
         that:
           - ssh_keygen_verify_pass_pub.stat.exists
           - ssh_keygen_verify_pass_pub.stat.mode == '0644'
+
+    - name: Stat id_ed25519 (default key from empty list)
+      ansible.builtin.stat:
+        path: "{{ ssh_keygen_verify_home }}/.ssh/id_ed25519"
+      register: ssh_keygen_verify_default_ed25519
+
+    - name: Assert id_ed25519 exists with correct mode and owner
+      ansible.builtin.assert:
+        that:
+          - ssh_keygen_verify_default_ed25519.stat.exists
+          - ssh_keygen_verify_default_ed25519.stat.mode == '0600'
+          - ssh_keygen_verify_default_ed25519.stat.pw_name == 'testuser'

@@ -14,13 +14,17 @@
   ansible.builtin.set_fact:
     ssh_keygen_home: "{{ ssh_keygen_getent.stdout.split(':')[5] }}"
 
+- name: Initialize ssh_keygen_normalized
+  ansible.builtin.set_fact:
+    ssh_keygen_normalized: []
+
 - name: Normalize key list — bake _filename into each entry
   ansible.builtin.set_fact:
     ssh_keygen_normalized: >-
-      {{ ssh_keygen_normalized | default([]) + [ssh_keygen_key | combine({
+      {{ ssh_keygen_normalized + [ssh_keygen_key | combine({
         '_filename': ssh_keygen_key.name | default('id_' ~ (ssh_keygen_key.type | default('ed25519')))
       })] }}
-  loop: "{{ ssh_keygen_keys }}"
+  loop: "{{ ssh_keygen_keys if ssh_keygen_keys | length > 0 else [{}] }}"
   loop_control:
     loop_var: ssh_keygen_key
 

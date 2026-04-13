@@ -17,3 +17,10 @@
             comment: "test-rsa-key"
           - name: id_test_passphrase
             passphrase: "molecule-test-pass"
+
+    - name: Apply ssh_keygen role with empty keys list (default ed25519)
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.ssh_keygen
+      vars:
+        ssh_keygen_owner: testuser
+        ssh_keygen_keys: []
