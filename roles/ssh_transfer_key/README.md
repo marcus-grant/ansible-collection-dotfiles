@@ -1,4 +1,4 @@
-# marcus_grant.dotfiles.ssh_keys
+# marcus_grant.dotfiles.ssh_transfer_key
 
 Deploys SSH key pairs from the Ansible control node to a target host.
 Creates `~/.ssh/` with correct permissions and copies private and public
@@ -14,12 +14,12 @@ Linux targets).
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `ssh_keys_owner` | no | `ansible_user_id` | User who owns `~/.ssh/` and all deployed key files |
-| `ssh_keys_pairs` | yes | `[]` | List of key pairs to deploy (see below) |
+| `ssh_transfer_key_owner` | no | `ansible_user_id` | User who owns `~/.ssh/` and all deployed key files |
+| `ssh_transfer_key_pairs` | yes | `[]` | List of key pairs to deploy (see below) |
 
-### `ssh_keys_pairs` entries
+### `ssh_transfer_key_pairs` entries
 
-Each entry in `ssh_keys_pairs` supports:
+Each entry in `ssh_transfer_key_pairs` supports:
 
 | Key | Required | Description |
 |---|---|---|
@@ -34,7 +34,7 @@ The role infers the public key path by appending `.pub` to `src`. If the
 - `~/.ssh/` is created with mode `0700` if absent
 - Private keys are deployed with mode `0600`
 - Public keys are deployed with mode `0644` (when the `.pub` exists)
-- All files are owned by `ssh_keys_owner`
+- All files are owned by `ssh_transfer_key_owner`
 - Idempotent — re-running with unchanged source files produces no changes
 - Content changes at the source propagate on the next run (standard `copy` behavior)
 - `no_log: true` is applied to all tasks that handle private key content
@@ -49,10 +49,10 @@ None.
 - hosts: workstations
   become: true
   roles:
-    - role: marcus_grant.dotfiles.ssh_keys
+    - role: marcus_grant.dotfiles.ssh_transfer_key
       vars:
-        ssh_keys_owner: marcus
-        ssh_keys_pairs:
+        ssh_transfer_key_owner: marcus
+        ssh_transfer_key_pairs:
           - src: ~/.ssh/id_ed25519_git
             name: id_ed25519_git
           - src: ~/.ssh/id_ed25519_personal
@@ -82,14 +82,14 @@ ansible-galaxy collection install marcus_grant.dotfiles:>=1.3.0
 
 ### Ordering
 
-`ssh_keys` must run **before** any role that clones a git repository over
+`ssh_transfer_key` must run **before** any role that clones a git repository over
 an SSH URL. It has no Ansible role dependencies — schedule it by task
 ordering in the play, not via `dependencies`.
 
 Recommended sequence:
 
 ```
-ssh_keys → (roles that clone via SSH) → ssh_config → ssh_authorize
+ssh_transfer_key → (roles that clone via SSH) → ssh_config → ssh_authorize
 ```
 
 ### Minimal example
@@ -98,10 +98,10 @@ ssh_keys → (roles that clone via SSH) → ssh_config → ssh_authorize
 - hosts: workstations
   become: true
   roles:
-    - role: marcus_grant.dotfiles.ssh_keys
+    - role: marcus_grant.dotfiles.ssh_transfer_key
       vars:
-        ssh_keys_owner: marcus
-        ssh_keys_pairs:
+        ssh_transfer_key_owner: marcus
+        ssh_transfer_key_pairs:
           - src: ~/.ssh/id_ed25519_git
 ```
 
@@ -111,10 +111,10 @@ ssh_keys → (roles that clone via SSH) → ssh_config → ssh_authorize
 - hosts: workstations
   become: true
   roles:
-    - role: marcus_grant.dotfiles.ssh_keys
+    - role: marcus_grant.dotfiles.ssh_transfer_key
       vars:
-        ssh_keys_owner: marcus
-        ssh_keys_pairs:
+        ssh_transfer_key_owner: marcus
+        ssh_transfer_key_pairs:
           - src: ~/.ssh/id_ed25519_git
             name: id_ed25519_git
           - src: ~/.ssh/id_ed25519_personal
@@ -135,7 +135,7 @@ does not exist at `src + ".pub"` the role skips it without error.
 
 - Private key content is never logged (`no_log: true` throughout)
 - `~/.ssh/` is created `0700`; private keys land `0600`; public keys `0644`
-- All files are owned by `ssh_keys_owner`, not `root`
+- All files are owned by `ssh_transfer_key_owner`, not `root`
 - The role does **not** generate keys, modify `authorized_keys`, or touch
   `~/.ssh/config` — those are separate concerns
 

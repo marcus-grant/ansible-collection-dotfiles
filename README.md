@@ -142,6 +142,12 @@ Each entry in `files`:
   * *Description*:
     Sets up SSH environtment (config, add keys, instruct manual entry).
   * [*Role link!*](./roles/ssh/)
+* **ssh_transfer_key**
+  * *Description*:
+    Deploys existing SSH key pairs from the Ansible control node to a target host.
+    Creates `~/.ssh/` with correct permissions and deploys private and public key
+    files with correct ownership. No key generation, no `authorized_keys`, no config.
+  * [*Role link!*](./roles/ssh_transfer_key/)
 * **git**
   * *Description*:
     Installs git & optional extras and configures global git configs.

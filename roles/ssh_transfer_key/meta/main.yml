@@ -1,6 +1,6 @@
 ---
 galaxy_info:
-  role_name: ssh_keys
+  role_name: ssh_transfer_key
   author: marcus_grant
   description: >
     Deploy SSH key pairs from the Ansible control node to target hosts.

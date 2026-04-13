@@ -1,0 +1,4 @@
+---
+# defaults file for ssh_transfer_key
+ssh_transfer_key_owner: "{{ ansible_user_id }}"
+ssh_transfer_key_pairs: []

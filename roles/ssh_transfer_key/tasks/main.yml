@@ -1,0 +1,56 @@
+---
+# tasks file for marcus_grant.dotfiles.ssh_transfer_key
+- name: Resolve home directory for ssh_transfer_key_owner
+  ansible.builtin.command: "getent passwd {{ ssh_transfer_key_owner }}"
+  register: ssh_transfer_key_getent
+  changed_when: false
+
+- name: Set ssh_transfer_key_home fact
+  ansible.builtin.set_fact:
+    ssh_transfer_key_home: "{{ ssh_transfer_key_getent.stdout.split(':')[5] }}"
+
+- name: Ensure .ssh directory exists
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ ssh_transfer_key_home }}/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "{{ ssh_transfer_key_owner }}"
+    group: "{{ ssh_transfer_key_owner }}"
+
+- name: Deploy SSH private keys
+  become: true
+  become_user: root
+  no_log: true
+  ansible.builtin.copy:
+    src: "{{ ssh_transfer_key_pair.src }}"
+    dest: "{{ ssh_transfer_key_home }}/.ssh/{{ ssh_transfer_key_pair.name | default(ssh_transfer_key_pair.src | basename) }}"
+    mode: '0600'
+    owner: "{{ ssh_transfer_key_owner }}"
+    group: "{{ ssh_transfer_key_owner }}"
+  loop: "{{ ssh_transfer_key_pairs }}"
+  loop_control:
+    loop_var: ssh_transfer_key_pair
+
+- name: Check if public keys exist on control node
+  become: false
+  delegate_to: localhost
+  ansible.builtin.stat:
+    path: "{{ ssh_transfer_key_pair.src }}.pub"
+  loop: "{{ ssh_transfer_key_pairs }}"
+  loop_control:
+    loop_var: ssh_transfer_key_pair
+  register: ssh_transfer_key_pub_stats
+
+- name: Deploy SSH public keys where they exist
+  become: true
+  become_user: root
+  ansible.builtin.copy:
+    src: "{{ item.ssh_transfer_key_pair.src }}.pub"
+    dest: "{{ ssh_transfer_key_home }}/.ssh/{{ item.ssh_transfer_key_pair.name | default(item.ssh_transfer_key_pair.src | basename) }}.pub"
+    mode: '0644'
+    owner: "{{ ssh_transfer_key_owner }}"
+    group: "{{ ssh_transfer_key_owner }}"
+  loop: "{{ ssh_transfer_key_pub_stats.results }}"
+  when: item.stat.exists

@@ -143,11 +143,11 @@ Host *
 ## Role Pipeline
 
 ```
-profile → userdirs → zsh → ssh_keys → ssh_config → neovim → ...
+profile → userdirs → zsh → ssh_transfer_key → ssh_config → neovim → ...
 ```
 
 Key files referenced in `identity_file` are expected to already exist (deployed
-by the `ssh_keys` role). This role has no hard dependency on `ssh_keys`.
+by the `ssh_transfer_key` role). This role has no hard dependency on `ssh_transfer_key`.
 
 ## Dependencies
 
