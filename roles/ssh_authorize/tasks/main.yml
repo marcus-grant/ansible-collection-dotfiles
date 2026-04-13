@@ -1,0 +1,78 @@
+---
+# tasks file for marcus_grant.dotfiles.ssh_authorize
+- name: Assert ssh_authorize_owner is defined
+  ansible.builtin.assert:
+    that: ssh_authorize_owner is defined
+    fail_msg: "ssh_authorize_owner is required"
+
+- name: Resolve home for ssh_authorize_owner on source host
+  ansible.builtin.command: "getent passwd {{ ssh_authorize_owner }}"
+  register: ssh_authorize_getent
+  changed_when: false
+
+- name: Set ssh_authorize_home fact
+  ansible.builtin.set_fact:
+    ssh_authorize_home: "{{ ssh_authorize_getent.stdout.split(':')[5] }}"
+
+- name: Build ssh_authorize_destinations fact
+  ansible.builtin.set_fact:
+    ssh_authorize_destinations: >-
+      {{ (ssh_config_entries | selectattr('ssh_authorize', 'defined')
+          | selectattr('ssh_authorize', 'equalto', true) | list)
+         + ssh_authorize_extra }}
+
+- name: Initialize ssh_authorize_normalized
+  ansible.builtin.set_fact:
+    ssh_authorize_normalized: []
+
+- name: Normalize destinations — bake _pubkey_path
+  ansible.builtin.set_fact:
+    ssh_authorize_normalized: >-
+      {{ ssh_authorize_normalized + [dest | combine({
+        '_pubkey_path': ssh_authorize_home ~ '/.ssh/'
+                        ~ (dest.identity_file | default('id_ed25519'))
+                        ~ '.pub'
+      })] }}
+  loop: "{{ ssh_authorize_destinations }}"
+  loop_control:
+    loop_var: dest
+
+- name: Slurp unique pubkeys from source host
+  ansible.builtin.slurp:
+    src: "{{ pubkey_path }}"
+  loop: "{{ ssh_authorize_normalized | map(attribute='_pubkey_path') | unique | list }}"
+  loop_control:
+    loop_var: pubkey_path
+  register: ssh_authorize_slurped
+
+- name: Resolve home directory on each unique destination host
+  ansible.builtin.command: "getent passwd {{ ssh_authorize_owner }}"
+  delegate_to: "{{ dest_host }}"
+  become: false
+  register: ssh_authorize_dest_getent
+  changed_when: false
+  loop: "{{ ssh_authorize_normalized | map(attribute='name') | unique | list }}"
+  loop_control:
+    loop_var: dest_host
+
+- name: Build destination homes map
+  ansible.builtin.set_fact:
+    ssh_authorize_dest_homes: >-
+      {{ ssh_authorize_dest_homes | default({}) | combine({
+        item.dest_host: item.stdout.split(':')[5]
+      }) }}
+  loop: "{{ ssh_authorize_dest_getent.results }}"
+
+- name: Authorize pubkey on each destination
+  ansible.builtin.include_tasks:
+    file: authorize_host.yml
+  vars:
+    authorize_dest_name: "{{ dest.name }}"
+    authorize_dest_home: "{{ ssh_authorize_dest_homes[dest.name] }}"
+    authorize_pubkey: >-
+      {{ (ssh_authorize_slurped.results
+          | selectattr('pubkey_path', 'equalto', dest._pubkey_path)
+          | first).content | b64decode | trim }}
+  loop: "{{ ssh_authorize_normalized }}"
+  loop_control:
+    loop_var: dest

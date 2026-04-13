@@ -1,0 +1,65 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Set other_host fact
+      ansible.builtin.set_fact:
+        other_host: "{{ 'archlinux' if inventory_hostname == 'debian12' else 'debian12' }}"
+
+    - name: Resolve other_host testuser home via getent
+      ansible.builtin.command: getent passwd testuser
+      delegate_to: "{{ other_host }}"
+      register: ssh_authorize_verify_other_getent
+      changed_when: false
+
+    - name: Set other_testuser_home fact
+      ansible.builtin.set_fact:
+        other_testuser_home: "{{ ssh_authorize_verify_other_getent.stdout.split(':')[5] }}"
+
+    - name: Stat authorized_keys on this host
+      ansible.builtin.stat:
+        path: /home/testuser/.ssh/authorized_keys
+      register: ssh_authorize_verify_ak_stat
+
+    - name: Assert authorized_keys exists, mode 0600, owned by testuser
+      ansible.builtin.assert:
+        that:
+          - ssh_authorize_verify_ak_stat.stat.exists
+          - ssh_authorize_verify_ak_stat.stat.mode == '0600'
+          - ssh_authorize_verify_ak_stat.stat.pw_name == 'testuser'
+
+    - name: Slurp authorized_keys on this host
+      ansible.builtin.slurp:
+        src: /home/testuser/.ssh/authorized_keys
+      register: ssh_authorize_verify_ak_content
+
+    - name: Slurp id_custom.pub from other_host
+      ansible.builtin.slurp:
+        src: "{{ other_testuser_home }}/.ssh/id_custom.pub"
+      delegate_to: "{{ other_host }}"
+      register: ssh_authorize_verify_custom_pub
+
+    - name: Slurp id_ed25519.pub from other_host
+      ansible.builtin.slurp:
+        src: "{{ other_testuser_home }}/.ssh/id_ed25519.pub"
+      delegate_to: "{{ other_host }}"
+      register: ssh_authorize_verify_ed25519_pub
+
+    - name: Assert authorized_keys contains id_custom.pub from other_host
+      ansible.builtin.assert:
+        that: >-
+          (ssh_authorize_verify_custom_pub.content | b64decode | trim)
+          in (ssh_authorize_verify_ak_content.content | b64decode)
+
+    - name: Assert authorized_keys contains id_ed25519.pub from other_host
+      ansible.builtin.assert:
+        that: >-
+          (ssh_authorize_verify_ed25519_pub.content | b64decode | trim)
+          in (ssh_authorize_verify_ak_content.content | b64decode)
+
+    - name: Assert authorized_keys has exactly 2 key entries (filter worked)
+      ansible.builtin.assert:
+        that: >-
+          (ssh_authorize_verify_ak_content.content | b64decode).splitlines()
+          | select('match', '^ssh-') | list | length == 2

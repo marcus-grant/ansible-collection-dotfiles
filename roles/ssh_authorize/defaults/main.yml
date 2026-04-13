@@ -1,0 +1,5 @@
+---
+# ssh_authorize_owner: required — no default
+ssh_config_entries: []
+ssh_authorize_extra: []
+ssh_authorize_force: false

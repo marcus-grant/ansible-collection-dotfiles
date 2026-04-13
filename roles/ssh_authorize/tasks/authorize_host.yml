@@ -1,0 +1,39 @@
+---
+- name: Ensure .ssh directory exists on destination
+  ansible.builtin.file:
+    path: "{{ authorize_dest_home }}/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "{{ ssh_authorize_owner }}"
+    group: "{{ ssh_authorize_owner }}"
+  delegate_to: "{{ authorize_dest_name }}"
+  become: true
+  become_user: root
+
+- name: Ensure authorized_keys exists on destination
+  ansible.builtin.file:
+    path: "{{ authorize_dest_home }}/.ssh/authorized_keys"
+    state: touch
+    mode: '0600'
+    owner: "{{ ssh_authorize_owner }}"
+    group: "{{ ssh_authorize_owner }}"
+    modification_time: preserve
+    access_time: preserve
+  delegate_to: "{{ authorize_dest_name }}"
+  become: true
+  become_user: root
+
+- name: Add pubkey to authorized_keys on destination
+  ansible.builtin.lineinfile:
+    path: "{{ authorize_dest_home }}/.ssh/authorized_keys"
+    line: "{{ authorize_pubkey }}"
+    regexp: >-
+      {{ ('^' ~ (authorize_pubkey.split()[0] | regex_escape)
+          ~ ' .* '
+          ~ (authorize_pubkey.split()[2] | regex_escape) ~ '$')
+         if (ssh_authorize_force and authorize_pubkey.split() | length >= 3)
+         else omit }}
+    state: present
+  delegate_to: "{{ authorize_dest_name }}"
+  become: true
+  become_user: root

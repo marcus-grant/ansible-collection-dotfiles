@@ -1,0 +1,25 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Set other_host fact
+      ansible.builtin.set_fact:
+        other_host: "{{ 'archlinux' if inventory_hostname == 'debian12' else 'debian12' }}"
+
+    - name: Apply ssh_authorize role
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.ssh_authorize
+      vars:
+        ssh_authorize_owner: testuser
+        ssh_config_entries:
+          - name: "{{ other_host }}"
+            identity_file: id_custom
+            ssh_authorize: true
+          - name: nonexistent-host-filtering-test
+            identity_file: id_ed25519
+            # no ssh_authorize: true -> filtered out
+        ssh_authorize_extra:
+          - name: "{{ other_host }}"
+            identity_file: id_ed25519

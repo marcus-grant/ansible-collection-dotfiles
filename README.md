@@ -154,6 +154,13 @@ Each entry in `files`:
     the private key already exists unless forced. Supports ed25519 (default), rsa,
     and ecdsa. No distribution, no `authorized_keys`, no config.
   * [*Role link!*](./roles/ssh_keygen/)
+* **ssh_authorize**
+  * *Description*:
+    Distributes SSH public keys to `authorized_keys` on destination hosts via
+    controller delegation. Topology from `ssh_config_entries` (opt-in via
+    `ssh_authorize: true`) plus an `ssh_authorize_extra` list. No direct
+    source-to-destination connectivity required.
+  * [*Role link!*](./roles/ssh_authorize/)
 * **git**
   * *Description*:
     Installs git & optional extras and configures global git configs.

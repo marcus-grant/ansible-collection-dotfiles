@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: ssh_authorize
+  author: marcus_grant
+  description: >
+    Distribute SSH public keys to authorized_keys on destination hosts via
+    controller delegation. Topology from ssh_config_entries (opt-in via
+    ssh_authorize: true) plus extra destinations. No direct source-to-destination
+    connectivity required.
+  issue_tracker_url: https://github.com/marcus-grant/ansible-collection-dotfiles/issues
+  license: GPL-2.0-or-later
+  min_ansible_version: '2.1'
+  platforms: []
+  galaxy_tags:
+    - dotfiles
+    - ssh
+    - security
+    - keys
+
+dependencies: []
