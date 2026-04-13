@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: ssh_keygen
+  author: marcus_grant
+  description: >
+    Generate SSH keypairs on the target host. Idempotent — skips generation
+    if the private key already exists unless forced. No distribution, no
+    authorized_keys — pure key generation.
+  issue_tracker_url: https://github.com/marcus-grant/ansible-collection-dotfiles/issues
+  license: GPL-2.0-or-later
+  min_ansible_version: '2.1'
+  platforms: []
+  galaxy_tags:
+    - dotfiles
+    - ssh
+    - security
+    - keys
+
+dependencies: []

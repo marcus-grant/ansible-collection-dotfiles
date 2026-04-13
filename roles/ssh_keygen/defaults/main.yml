@@ -1,0 +1,4 @@
+---
+# ssh_keygen_owner: required, no default
+ssh_keygen_keys: []
+ssh_keygen_force: false

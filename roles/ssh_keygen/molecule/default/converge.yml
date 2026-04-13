@@ -1,0 +1,19 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  become_user: root
+  tasks:
+    - name: Apply ssh_keygen role
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.ssh_keygen
+      vars:
+        ssh_keygen_owner: testuser
+        ssh_keygen_keys:
+          - name: id_test_default
+          - name: id_test_rsa
+            type: rsa
+            bits: 4096
+            comment: "test-rsa-key"
+          - name: id_test_passphrase
+            passphrase: "molecule-test-pass"

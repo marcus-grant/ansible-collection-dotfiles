@@ -1,0 +1,83 @@
+---
+# tasks file for marcus_grant.dotfiles.ssh_keygen
+- name: Assert ssh_keygen_owner is defined
+  ansible.builtin.assert:
+    that: ssh_keygen_owner is defined
+    fail_msg: "ssh_keygen_owner is required"
+
+- name: Resolve home for ssh_keygen_owner
+  ansible.builtin.command: "getent passwd {{ ssh_keygen_owner }}"
+  register: ssh_keygen_getent
+  changed_when: false
+
+- name: Set ssh_keygen_home fact
+  ansible.builtin.set_fact:
+    ssh_keygen_home: "{{ ssh_keygen_getent.stdout.split(':')[5] }}"
+
+- name: Normalize key list — bake _filename into each entry
+  ansible.builtin.set_fact:
+    ssh_keygen_normalized: >-
+      {{ ssh_keygen_normalized | default([]) + [ssh_keygen_key | combine({
+        '_filename': ssh_keygen_key.name | default('id_' ~ (ssh_keygen_key.type | default('ed25519')))
+      })] }}
+  loop: "{{ ssh_keygen_keys }}"
+  loop_control:
+    loop_var: ssh_keygen_key
+
+- name: Ensure .ssh directory exists
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ ssh_keygen_home }}/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "{{ ssh_keygen_owner }}"
+    group: "{{ ssh_keygen_owner }}"
+
+- name: Stat private key
+  ansible.builtin.stat:
+    path: "{{ ssh_keygen_home }}/.ssh/{{ ssh_keygen_key._filename }}"
+  loop: "{{ ssh_keygen_normalized }}"
+  loop_control:
+    loop_var: ssh_keygen_key
+  register: ssh_keygen_stat
+
+- name: Generate keypair
+  become: true
+  become_user: "{{ ssh_keygen_owner }}"
+  no_log: true
+  ansible.builtin.command:
+    argv: >-
+      {{ ['ssh-keygen',
+          '-t', (item.ssh_keygen_key.type | default('ed25519'))]
+         + (['-b', (item.ssh_keygen_key.bits | string)] if (item.ssh_keygen_key.bits is defined) else [])
+         + ['-C', (item.ssh_keygen_key.comment | default(ssh_keygen_owner ~ '@' ~ inventory_hostname)),
+            '-N', (item.ssh_keygen_key.passphrase | default('')),
+            '-f', (ssh_keygen_home ~ '/.ssh/' ~ item.ssh_keygen_key._filename)] }}
+  loop: "{{ ssh_keygen_stat.results }}"
+  when: not item.stat.exists or ssh_keygen_force
+  changed_when: true
+
+- name: Set private key permissions
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ ssh_keygen_home }}/.ssh/{{ ssh_keygen_key._filename }}"
+    mode: '0600'
+    owner: "{{ ssh_keygen_owner }}"
+    group: "{{ ssh_keygen_owner }}"
+  loop: "{{ ssh_keygen_normalized }}"
+  loop_control:
+    loop_var: ssh_keygen_key
+
+- name: Set public key permissions
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ ssh_keygen_home }}/.ssh/{{ ssh_keygen_key._filename }}.pub"
+    mode: '0644'
+    owner: "{{ ssh_keygen_owner }}"
+    group: "{{ ssh_keygen_owner }}"
+  loop: "{{ ssh_keygen_normalized }}"
+  loop_control:
+    loop_var: ssh_keygen_key

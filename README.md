@@ -148,6 +148,12 @@ Each entry in `files`:
     Creates `~/.ssh/` with correct permissions and deploys private and public key
     files with correct ownership. No key generation, no `authorized_keys`, no config.
   * [*Role link!*](./roles/ssh_transfer_key/)
+* **ssh_keygen**
+  * *Description*:
+    Generates SSH keypairs on the target host. Idempotent — skips generation if
+    the private key already exists unless forced. Supports ed25519 (default), rsa,
+    and ecdsa. No distribution, no `authorized_keys`, no config.
+  * [*Role link!*](./roles/ssh_keygen/)
 * **git**
   * *Description*:
     Installs git & optional extras and configures global git configs.

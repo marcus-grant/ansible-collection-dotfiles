@@ -1,0 +1,113 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Resolve testuser home directory
+      ansible.builtin.command: getent passwd testuser
+      register: ssh_keygen_verify_getent
+      changed_when: false
+
+    - name: Set ssh_keygen_verify_home fact
+      ansible.builtin.set_fact:
+        ssh_keygen_verify_home: "{{ ssh_keygen_verify_getent.stdout.split(':')[5] }}"
+
+    - name: Stat .ssh directory
+      ansible.builtin.stat:
+        path: "{{ ssh_keygen_verify_home }}/.ssh"
+      register: ssh_keygen_verify_dir
+
+    - name: Assert .ssh directory exists with correct mode and owner
+      ansible.builtin.assert:
+        that:
+          - ssh_keygen_verify_dir.stat.exists
+          - ssh_keygen_verify_dir.stat.mode == '0700'
+          - ssh_keygen_verify_dir.stat.pw_name == 'testuser'
+
+    - name: Stat id_test_default (private)
+      ansible.builtin.stat:
+        path: "{{ ssh_keygen_verify_home }}/.ssh/id_test_default"
+      register: ssh_keygen_verify_default_priv
+
+    - name: Assert id_test_default private key exists with correct mode and owner
+      ansible.builtin.assert:
+        that:
+          - ssh_keygen_verify_default_priv.stat.exists
+          - ssh_keygen_verify_default_priv.stat.mode == '0600'
+          - ssh_keygen_verify_default_priv.stat.pw_name == 'testuser'
+
+    - name: Stat id_test_default.pub
+      ansible.builtin.stat:
+        path: "{{ ssh_keygen_verify_home }}/.ssh/id_test_default.pub"
+      register: ssh_keygen_verify_default_pub
+
+    - name: Assert id_test_default.pub exists with correct mode and owner
+      ansible.builtin.assert:
+        that:
+          - ssh_keygen_verify_default_pub.stat.exists
+          - ssh_keygen_verify_default_pub.stat.mode == '0644'
+          - ssh_keygen_verify_default_pub.stat.pw_name == 'testuser'
+
+    - name: Slurp id_test_default.pub
+      ansible.builtin.slurp:
+        src: "{{ ssh_keygen_verify_home }}/.ssh/id_test_default.pub"
+      register: ssh_keygen_verify_default_pub_content
+
+    - name: Assert id_test_default.pub starts with ssh-ed25519
+      ansible.builtin.assert:
+        that: (ssh_keygen_verify_default_pub_content.content | b64decode) is match('^ssh-ed25519 ')
+
+    - name: Stat id_test_rsa (private)
+      ansible.builtin.stat:
+        path: "{{ ssh_keygen_verify_home }}/.ssh/id_test_rsa"
+      register: ssh_keygen_verify_rsa_priv
+
+    - name: Assert id_test_rsa private key exists with correct mode
+      ansible.builtin.assert:
+        that:
+          - ssh_keygen_verify_rsa_priv.stat.exists
+          - ssh_keygen_verify_rsa_priv.stat.mode == '0600'
+
+    - name: Stat id_test_rsa.pub
+      ansible.builtin.stat:
+        path: "{{ ssh_keygen_verify_home }}/.ssh/id_test_rsa.pub"
+      register: ssh_keygen_verify_rsa_pub
+
+    - name: Assert id_test_rsa.pub exists with correct mode
+      ansible.builtin.assert:
+        that:
+          - ssh_keygen_verify_rsa_pub.stat.exists
+          - ssh_keygen_verify_rsa_pub.stat.mode == '0644'
+
+    - name: Slurp id_test_rsa.pub
+      ansible.builtin.slurp:
+        src: "{{ ssh_keygen_verify_home }}/.ssh/id_test_rsa.pub"
+      register: ssh_keygen_verify_rsa_pub_content
+
+    - name: Assert id_test_rsa.pub starts with ssh-rsa and contains comment
+      ansible.builtin.assert:
+        that:
+          - (ssh_keygen_verify_rsa_pub_content.content | b64decode) is match('^ssh-rsa ')
+          - "'test-rsa-key' in (ssh_keygen_verify_rsa_pub_content.content | b64decode)"
+
+    - name: Stat id_test_passphrase (private)
+      ansible.builtin.stat:
+        path: "{{ ssh_keygen_verify_home }}/.ssh/id_test_passphrase"
+      register: ssh_keygen_verify_pass_priv
+
+    - name: Assert id_test_passphrase private key exists with correct mode
+      ansible.builtin.assert:
+        that:
+          - ssh_keygen_verify_pass_priv.stat.exists
+          - ssh_keygen_verify_pass_priv.stat.mode == '0600'
+
+    - name: Stat id_test_passphrase.pub
+      ansible.builtin.stat:
+        path: "{{ ssh_keygen_verify_home }}/.ssh/id_test_passphrase.pub"
+      register: ssh_keygen_verify_pass_pub
+
+    - name: Assert id_test_passphrase.pub exists with correct mode
+      ansible.builtin.assert:
+        that:
+          - ssh_keygen_verify_pass_pub.stat.exists
+          - ssh_keygen_verify_pass_pub.stat.mode == '0644'

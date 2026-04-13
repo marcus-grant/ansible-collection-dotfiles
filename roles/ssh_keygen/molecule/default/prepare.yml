@@ -1,0 +1,30 @@
+---
+- name: Prepare target hosts
+  hosts: all
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    - name: Update apt cache on Debian family
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install openssh-client (Debian)
+      ansible.builtin.apt:
+        name: openssh-client
+        state: present
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install openssh (Arch)
+      community.general.pacman:
+        name: openssh
+        state: present
+      when: ansible_facts['os_family'] == 'Archlinux'
+
+    - name: Create test user with home directory
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true
