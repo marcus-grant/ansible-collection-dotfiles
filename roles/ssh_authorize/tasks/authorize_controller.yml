@@ -1,0 +1,32 @@
+---
+- name: Ensure .ssh directory exists on controller
+  ansible.builtin.file:
+    path: "{{ authorize_controller_home }}/.ssh"
+    state: directory
+    mode: '0700'
+  delegate_to: localhost
+  become: false
+
+- name: Ensure authorized_keys exists on controller
+  ansible.builtin.file:
+    path: "{{ authorize_controller_home }}/.ssh/authorized_keys"
+    state: touch
+    mode: '0600'
+    modification_time: preserve
+    access_time: preserve
+  delegate_to: localhost
+  become: false
+
+- name: Add pubkey to authorized_keys on controller
+  ansible.builtin.lineinfile:
+    path: "{{ authorize_controller_home }}/.ssh/authorized_keys"
+    line: "{{ authorize_controller_pubkey }}"
+    regexp: >-
+      {{ ('^' ~ (authorize_controller_pubkey.split()[0] | regex_escape)
+          ~ ' .* '
+          ~ (authorize_controller_pubkey.split()[2] | regex_escape) ~ '$')
+         if (ssh_authorize_force and authorize_controller_pubkey.split() | length >= 3)
+         else omit }}
+    state: present
+  delegate_to: localhost
+  become: false

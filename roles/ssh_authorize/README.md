@@ -5,6 +5,9 @@ entirely by the Ansible controller. The source host's pubkeys are slurped by the
 controller and written to each destination via `delegate_to` — no direct
 source→destination SSH connectivity is required.
 
+Optionally also writes the source host's pubkey into the **controller's** own
+`authorized_keys`, enabling the source to SSH back into the controller.
+
 ## Requirements
 
 - `openssh-client` (or equivalent) must be present on the **source** host so that
@@ -21,6 +24,8 @@ source→destination SSH connectivity is required.
 | `ssh_config_entries` | no | `[]` | List of destination entries, filtered to those with `ssh_authorize: true`. Mirrors the shape of `ssh_config` host entries (see below). |
 | `ssh_authorize_extra` | no | `[]` | Additional destination entries not covered by `ssh_config_entries`. Same format, no filtering — all entries are processed. |
 | `ssh_authorize_force` | no | `false` | When `true`, uses regexp-based matching on key-type + comment to replace a stale key line in `authorized_keys`. When `false`, exact-line match is used (no-op if already present). **Never set in vars files — pass as `-e ssh_authorize_force=true`.** |
+| `ssh_authorize_controller_user` | no | — | When defined, authorizes the source host's pubkey(s) into this user's `authorized_keys` on the Ansible controller. Acts as the feature enabler — if unset, the entire controller block is skipped. Resolved via `getent passwd` delegated to `localhost`. |
+| `ssh_authorize_controller_identity_file` | no | — | When set alongside `ssh_authorize_controller_user`, only this key (filename stem, no `.pub`) is pushed to the controller instead of all already-slurped pubkeys. The key is slurped directly from the source host — it need not appear in any destination entry. Requires `ssh_authorize_controller_user`. |
 
 ### Destination entry format
 
@@ -99,16 +104,37 @@ After this role runs:
 - `backup-host` will have `marcus`'s `id_ed25519_backup.pub`
 - `work-laptop` is untouched (no `ssh_authorize: true`)
 
+### With controller authorization
+
+```yaml
+- hosts: servers
+  become: true
+  roles:
+    - role: marcus_grant.dotfiles.ssh_authorize
+      vars:
+        ssh_authorize_owner: marcus
+        ssh_config_entries:
+          - name: server1
+            ssh_authorize: true
+        ssh_authorize_controller_user: ansible_runner
+        ssh_authorize_controller_identity_file: id_ed25519_controller
+```
+
+`server1` gets `marcus`'s `id_ed25519.pub`. The controller user `ansible_runner`
+gets `marcus`'s `id_ed25519_controller.pub` — enabling `marcus@server1` to SSH
+back to the controller.
+
 ## Playbook Integration
 
 ### Version
 
-Introduced in `marcus_grant.dotfiles` **1.13.0**.
+Introduced in `marcus_grant.dotfiles` **1.13.0**. Controller authorization
+added in **1.14.0**.
 
 ### Installation
 
 ```bash
-ansible-galaxy collection install marcus_grant.dotfiles:>=1.13.0
+ansible-galaxy collection install marcus_grant.dotfiles:>=1.14.0
 ```
 
 ### Force-replace a stale key

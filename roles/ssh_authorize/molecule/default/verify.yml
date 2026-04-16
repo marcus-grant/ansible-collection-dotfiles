@@ -63,3 +63,21 @@
         that: >-
           (ssh_authorize_verify_ak_content.content | b64decode).splitlines()
           | select('match', '^ssh-') | list | length == 2
+
+    - name: Slurp controller authorized_keys
+      ansible.builtin.slurp:
+        src: "{{ lookup('env', 'HOME') }}/.ssh/authorized_keys"
+      delegate_to: localhost
+      become: false
+      register: ssh_authorize_verify_controller_ak
+
+    - name: Slurp this host's testuser id_ed25519.pub
+      ansible.builtin.slurp:
+        src: /home/testuser/.ssh/id_ed25519.pub
+      register: ssh_authorize_verify_this_pub
+
+    - name: Assert this host's id_ed25519.pub is in controller authorized_keys
+      ansible.builtin.assert:
+        that: >-
+          (ssh_authorize_verify_this_pub.content | b64decode | trim)
+          in (ssh_authorize_verify_controller_ak.content | b64decode)

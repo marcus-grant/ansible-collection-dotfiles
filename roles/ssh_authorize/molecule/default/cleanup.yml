@@ -1,0 +1,34 @@
+---
+# Key names here must stay in sync with prepare.yml keypair generation.
+- name: Clean up controller authorized_keys after test
+  hosts: all
+  gather_facts: false
+  ignore_unreachable: true
+  tasks:
+    - name: Slurp this host's testuser id_custom.pub
+      ansible.builtin.slurp:
+        src: /home/testuser/.ssh/id_custom.pub
+      register: ssh_authorize_cleanup_custom
+
+    - name: Slurp this host's testuser id_ed25519.pub
+      ansible.builtin.slurp:
+        src: /home/testuser/.ssh/id_ed25519.pub
+      register: ssh_authorize_cleanup_ed25519
+
+    - name: Remove id_custom.pub from controller authorized_keys
+      ansible.builtin.lineinfile:
+        path: "{{ lookup('env', 'HOME') }}/.ssh/authorized_keys"
+        line: "{{ ssh_authorize_cleanup_custom.content | b64decode | trim }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      ignore_errors: true
+
+    - name: Remove id_ed25519.pub from controller authorized_keys
+      ansible.builtin.lineinfile:
+        path: "{{ lookup('env', 'HOME') }}/.ssh/authorized_keys"
+        line: "{{ ssh_authorize_cleanup_ed25519.content | b64decode | trim }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      ignore_errors: true

@@ -76,3 +76,50 @@
   loop: "{{ ssh_authorize_normalized }}"
   loop_control:
     loop_var: dest
+
+- name: Assert ssh_authorize_controller_user is set when identity_file is used
+  ansible.builtin.assert:
+    that: ssh_authorize_controller_user is defined
+    fail_msg: "ssh_authorize_controller_identity_file requires ssh_authorize_controller_user"
+  when: ssh_authorize_controller_identity_file is defined
+
+- name: Slurp controller-specific identity key
+  ansible.builtin.slurp:
+    src: "{{ ssh_authorize_home }}/.ssh/{{ ssh_authorize_controller_identity_file }}.pub"
+  register: ssh_authorize_controller_slurp
+  when:
+    - ssh_authorize_controller_user is defined
+    - ssh_authorize_controller_identity_file is defined
+
+- name: Resolve controller user home
+  ansible.builtin.command: "getent passwd {{ ssh_authorize_controller_user }}"
+  delegate_to: localhost
+  become: false
+  register: ssh_authorize_controller_getent
+  changed_when: false
+  when: ssh_authorize_controller_user is defined
+
+- name: Set ssh_authorize_controller_home fact
+  ansible.builtin.set_fact:
+    ssh_authorize_controller_home: "{{ ssh_authorize_controller_getent.stdout.split(':')[5] }}"
+  when: ssh_authorize_controller_user is defined
+
+- name: Build controller pubkey list
+  ansible.builtin.set_fact:
+    ssh_authorize_controller_pubkeys: >-
+      {{ [ssh_authorize_controller_slurp.content | b64decode | trim]
+         if ssh_authorize_controller_identity_file is defined
+         else
+         ssh_authorize_slurped.results
+         | map(attribute='content') | map('b64decode') | map('trim') | map('string') | unique | list }}
+  when: ssh_authorize_controller_user is defined
+
+- name: Authorize pubkeys on controller
+  ansible.builtin.include_tasks:
+    file: authorize_controller.yml
+  vars:
+    authorize_controller_pubkey: "{{ controller_pubkey }}"
+    authorize_controller_home: "{{ ssh_authorize_controller_home }}"
+  loop: "{{ ssh_authorize_controller_pubkeys | default([]) }}"
+  loop_control:
+    loop_var: controller_pubkey
