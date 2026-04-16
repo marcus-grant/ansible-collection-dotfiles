@@ -14,13 +14,13 @@
       vars:
         ssh_authorize_owner: testuser
         ssh_config_host_entries:
-          - name: "{{ other_host }}"
+          - host: "{{ other_host }}"
             identity_file: id_custom
             ssh_authorize: true
-          - name: nonexistent-host-filtering-test
+          - host: nonexistent-host-filtering-test
             identity_file: id_ed25519
             # no ssh_authorize: true -> filtered out
         ssh_authorize_extra:
-          - name: "{{ other_host }}"
+          - host: "{{ other_host }}"
             identity_file: id_ed25519
         ssh_authorize_controller_user: "{{ lookup('env', 'USER') }}"

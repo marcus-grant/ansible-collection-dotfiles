@@ -53,7 +53,7 @@
   become: false
   register: ssh_authorize_dest_getent
   changed_when: false
-  loop: "{{ ssh_authorize_normalized | map(attribute='name') | unique | list }}"
+  loop: "{{ ssh_authorize_normalized | map(attribute='host') | unique | list }}"
   loop_control:
     loop_var: dest_host
 
@@ -69,8 +69,8 @@
   ansible.builtin.include_tasks:
     file: authorize_host.yml
   vars:
-    authorize_dest_name: "{{ dest.name }}"
-    authorize_dest_home: "{{ ssh_authorize_dest_homes[dest.name] }}"
+    authorize_dest_name: "{{ dest.host }}"
+    authorize_dest_home: "{{ ssh_authorize_dest_homes[dest.host] }}"
     authorize_pubkey: >-
       {{ (ssh_authorize_slurped.results
           | selectattr('pubkey_path', 'equalto', dest._pubkey_path)

@@ -22,25 +22,26 @@ Optionally also writes the source host's pubkey into the **controller's** own
 |---|---|---|---|
 | `ssh_authorize_owner` | **yes** | — | User on both source and destination. Pubkeys are read from this user's `~/.ssh/` on the source; written to their `authorized_keys` on each destination. Resolved via `getent passwd`. |
 | `ssh_config_entries` | no | `[]` | List of destination entries, filtered to those with `ssh_authorize: true`. Mirrors the shape of `ssh_config` host entries (see below). |
-| `ssh_authorize_extra` | no | `[]` | Additional destination entries not covered by `ssh_config_entries`. Same format, no filtering — all entries are processed. |
+| `ssh_authorize_extra` | no | `[]` | Additional destination entries not covered by `ssh_config_common_entries`/`ssh_config_host_entries`. Same format, no filtering — all entries are processed. |
 | `ssh_authorize_force` | no | `false` | When `true`, uses regexp-based matching on key-type + comment to replace a stale key line in `authorized_keys`. When `false`, exact-line match is used (no-op if already present). **Never set in vars files — pass as `-e ssh_authorize_force=true`.** |
 | `ssh_authorize_controller_user` | no | — | When defined, authorizes the source host's pubkey(s) into this user's `authorized_keys` on the Ansible controller. Acts as the feature enabler — if unset, the entire controller block is skipped. Resolved via `getent passwd` delegated to `localhost`. |
 | `ssh_authorize_controller_identity_file` | no | — | When set alongside `ssh_authorize_controller_user`, only this key (filename stem, no `.pub`) is pushed to the controller instead of all already-slurped pubkeys. The key is slurped directly from the source host — it need not appear in any destination entry. Requires `ssh_authorize_controller_user`. |
 
 ### Destination entry format
 
-Both `ssh_config_entries` and `ssh_authorize_extra` accept entries with:
+Both `ssh_config_common_entries`/`ssh_config_host_entries` and `ssh_authorize_extra` accept entries with:
 
 | Key | Required | Default | Description |
 |---|---|---|---|
-| `name` | **yes** | — | Ansible inventory hostname of the destination. Used as `delegate_to` target. |
+| `host` | **yes** | — | Ansible inventory hostname of the destination. Used as `delegate_to` target. |
 | `identity_file` | no | `id_ed25519` | Filename (no extension) of the keypair in `~/.ssh/`. The `.pub` file is read. |
-| `ssh_authorize` | no | — | Set to `true` to include this entry when sourced from `ssh_config_entries`. Entries without this key, or with `false`, are filtered out. |
+| `ssh_authorize` | no | — | Set to `true` to include this entry when sourced from `ssh_config_common_entries`/`ssh_config_host_entries`. Entries without this key, or with `false`, are filtered out. |
 
 ## Topology resolution
 
-1. `ssh_config_entries` is filtered to entries where `ssh_authorize: true` is
-   explicitly set. Absent or `false` → excluded.
+1. `ssh_config_common_entries` and `ssh_config_host_entries` are concatenated
+   and filtered to entries where `ssh_authorize: true` is explicitly set.
+   Absent or `false` → excluded.
 2. The filtered list is concatenated with `ssh_authorize_extra`.
 3. The combined list is processed identically — one loop, same delegated tasks.
 
@@ -85,16 +86,16 @@ ssh_keygen → ssh_config → ssh_authorize
     - role: marcus_grant.dotfiles.ssh_authorize
       vars:
         ssh_authorize_owner: marcus
-        ssh_config_entries:
-          - name: server1
+        ssh_config_host_entries:
+          - host: server1
             identity_file: id_ed25519_server
             ssh_authorize: true
-          - name: server2
+          - host: server2
             ssh_authorize: true
-          - name: work-laptop
+          - host: work-laptop
             # no ssh_authorize: true — excluded from distribution
         ssh_authorize_extra:
-          - name: backup-host
+          - host: backup-host
             identity_file: id_ed25519_backup
 ```
 
@@ -113,8 +114,8 @@ After this role runs:
     - role: marcus_grant.dotfiles.ssh_authorize
       vars:
         ssh_authorize_owner: marcus
-        ssh_config_entries:
-          - name: server1
+        ssh_config_host_entries:
+          - host: server1
             ssh_authorize: true
         ssh_authorize_controller_user: ansible_runner
         ssh_authorize_controller_identity_file: id_ed25519_controller
