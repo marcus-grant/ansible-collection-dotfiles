@@ -85,6 +85,11 @@ gpg_transfer_keys:
 |---|---|---|
 | `gpg_transfer_create_symlink` | `false` | When `true` and `gpg_transfer_gnupghome` differs from `~/.gnupg`, create `~/.gnupg` as a symlink pointing to `gpg_transfer_gnupghome` |
 
+Use this when GPG should live under an XDG-compliant or non-default path (e.g.
+`~/.local/gnupg`, `~/.config/gnupg`) while tools that hardcode `~/.gnupg` still work
+via the symlink. The role creates `gpg_transfer_gnupghome` and all intermediate
+directories owned by `gpg_transfer_owner` before creating the symlink.
+
 If `~/.gnupg` already exists as a real directory, the role **fails** — manual
 intervention is required. The role will not clobber existing directories.
 

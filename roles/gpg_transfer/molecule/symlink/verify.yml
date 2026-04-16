@@ -13,6 +13,16 @@
         that: custom_gnupghome_stat.stat.exists and custom_gnupghome_stat.stat.isdir
         fail_msg: "Custom gnupghome /home/testuser/.local/gnupg not found after failed symlink attempt"
 
+    - name: Stat intermediate parent directory
+      ansible.builtin.stat:
+        path: /home/testuser/.local
+      register: local_dir_stat
+
+    - name: Assert intermediate parent is owned by testuser
+      ansible.builtin.assert:
+        that: local_dir_stat.stat.pw_name == 'testuser'
+        fail_msg: "/home/testuser/.local is owned by {{ local_dir_stat.stat.pw_name }}, expected testuser"
+
     - name: List secret keys at custom gnupghome
       ansible.builtin.shell:
         cmd: >-

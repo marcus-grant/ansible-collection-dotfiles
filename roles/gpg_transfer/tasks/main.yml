@@ -54,13 +54,11 @@
 
 - name: Ensure target gnupg directory exists
   become: true
-  become_user: root
+  become_user: "{{ gpg_transfer_owner }}"
   ansible.builtin.file:
     path: "{{ gpg_transfer_gnupghome_abs }}"
     state: directory
     mode: '0700'
-    owner: "{{ gpg_transfer_owner }}"
-    group: "{{ gpg_transfer_owner }}"
   no_log: true
 
 - name: Stat default ~/.gnupg on target (symlink check)
