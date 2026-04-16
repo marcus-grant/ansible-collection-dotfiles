@@ -49,46 +49,36 @@ re-publish requires a new namespace claim if the current namespace changes.
 Items without a version target. Assigned to the next relevant version once
 scoped.
 
-### ssh_authorize: investigate exit-127 on FreeBSD / OPNsense appliances
+### ssh_authorize: research and decide fate
 
-**What:** `ansible` module execution exits 127 on FreeBSD-based appliances
-(OPNsense confirmed) despite Python being present and `PATH` correct
-interactively.
+**Current status:** Not production-ready. Rolled back from infra playbook as
+of v1.14.4. Full known issues documented in `roles/ssh_authorize/README.md`.
 
-**Why:** This is the primary blocker preventing `ssh_authorize` from working
-against appliance-class hosts — the exact use case the `home:` override was
-designed to enable.
+**Research needed before any redesign or archival decision:**
 
-**Investigation:** Reproduce in isolation with `ANSIBLE_DEBUG=1`. Candidate
-causes: Ansible module-path injection, shebang line resolution, `tmpdir`
-location restricted by the shell, or Python version mismatch.
+1. **Exit-127 on FreeBSD / OPNsense appliances.** Module execution fails with
+   exit 127 despite Python being present and `PATH` correct interactively.
+   Root cause unknown. Reproduce in isolation with `ANSIBLE_DEBUG=1`. Candidate
+   causes: Ansible module-path injection, shebang line resolution, `tmpdir`
+   restricted by the shell, Python version mismatch.
 
-### ssh_authorize: fix force mode for 2-field keys
+2. **Force mode broken for 2-field keys.** `ssh_authorize_force: true` falls
+   back to exact-line match for keys with no comment field (2 tokens: type +
+   key body). Stale 2-field keys are silently left in place. Fix direction:
+   regexp matching on key-type + key-body alone, or rethink dedup entirely.
 
-**What:** `ssh_authorize_force: true` falls back to exact-line match for keys
-with no comment field (2 tokens: type + key body). Stale 2-field keys are
-silently left in place.
+3. **Applicability of `ansible.posix.authorized_key`.** Determine whether
+   switching the write step to `ansible.posix.authorized_key` avoids the
+   Python module-execution requirement on non-standard destinations, and
+   whether it handles all current use cases (explicit home, force mode,
+   controller authorization).
 
-**Why:** Force mode is supposed to replace a stale key regardless of comment.
-For commentless keys it does nothing — this is a silent correctness failure.
-
-**Fix direction:** Regexp should match on key-type + key-body alone (no comment
-anchor), or the dedup logic should be rethought entirely.
-
-### ssh_authorize: redesign or archive
-
-**What:** Decide whether to redesign the role around `ansible.posix.authorized_key`
-(which handles the write step without requiring Python on the destination), or
-archive it with a clear status note and replacement guidance.
-
-**Why:** Issues 1–4 in the role's Known Issues section collectively mean the
-role is not usable against appliances. The design assumes full Ansible
-module-execution on every destination, which fails for the most important
-category of targets.
-
-**Decision gate:** Revisit after the exit-127 investigation concludes. If the
-root cause is fixable, redesign. If it is structural to how Ansible handles
-non-standard targets, archive.
+**Decision gate:** After research concludes, choose one path:
+- **Redesign** around `ansible.posix.authorized_key` if it resolves the
+  appliance compatibility issues.
+- **Archive** with a clear status note and replacement guidance (direct
+  `ansible.posix.authorized_key` usage in plays) if the problems are
+  structural.
 
 ### dotfiles_owner consolidation
 
