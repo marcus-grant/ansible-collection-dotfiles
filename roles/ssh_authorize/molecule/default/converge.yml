@@ -13,7 +13,7 @@
         name: marcus_grant.dotfiles.ssh_authorize
       vars:
         ssh_authorize_owner: testuser
-        ssh_config_entries:
+        ssh_config_host_entries:
           - name: "{{ other_host }}"
             identity_file: id_custom
             ssh_authorize: true

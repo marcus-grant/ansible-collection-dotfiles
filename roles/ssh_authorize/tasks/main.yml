@@ -17,8 +17,10 @@
 - name: Build ssh_authorize_destinations fact
   ansible.builtin.set_fact:
     ssh_authorize_destinations: >-
-      {{ (ssh_config_entries | selectattr('ssh_authorize', 'defined')
-          | selectattr('ssh_authorize', 'equalto', true) | list)
+      {{ ((ssh_config_common_entries | default([]))
+          + (ssh_config_host_entries | default([])))
+         | selectattr('ssh_authorize', 'defined')
+         | selectattr('ssh_authorize', 'equalto', true) | list
          + ssh_authorize_extra }}
 
 - name: Initialize ssh_authorize_normalized
