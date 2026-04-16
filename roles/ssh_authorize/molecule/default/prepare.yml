@@ -48,3 +48,11 @@
       ansible.builtin.command:
         cmd: ssh-keygen -t ed25519 -N '' -f /home/testuser/.ssh/id_custom
         creates: /home/testuser/.ssh/id_custom
+
+    - name: Create .ssh dir at explicit-home-test path for home override test
+      ansible.builtin.file:
+        path: /tmp/explicit-home-test/.ssh
+        state: directory
+        mode: '0700'
+        owner: testuser
+        group: testuser

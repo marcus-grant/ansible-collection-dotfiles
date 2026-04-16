@@ -47,30 +47,33 @@
     loop_var: pubkey_path
   register: ssh_authorize_slurped
 
-- name: Resolve home directory on each unique destination host
+- name: Resolve home directory on each unique destination host (no explicit home)
   ansible.builtin.command: "getent passwd {{ ssh_authorize_owner }}"
   delegate_to: "{{ dest_host }}"
   become: false
   register: ssh_authorize_dest_getent
   changed_when: false
-  loop: "{{ ssh_authorize_normalized | map(attribute='host') | unique | list }}"
+  loop: >-
+    {{ ssh_authorize_normalized
+       | rejectattr('home', 'defined')
+       | map(attribute='host') | unique | list }}
   loop_control:
     loop_var: dest_host
 
-- name: Build destination homes map
+- name: Build destination homes map from getent results
   ansible.builtin.set_fact:
     ssh_authorize_dest_homes: >-
       {{ ssh_authorize_dest_homes | default({}) | combine({
         item.dest_host: item.stdout.split(':')[5]
       }) }}
-  loop: "{{ ssh_authorize_dest_getent.results }}"
+  loop: "{{ ssh_authorize_dest_getent.results | default([]) }}"
 
 - name: Authorize pubkey on each destination
   ansible.builtin.include_tasks:
     file: authorize_host.yml
   vars:
     authorize_dest_name: "{{ dest.host }}"
-    authorize_dest_home: "{{ ssh_authorize_dest_homes[dest.host] }}"
+    authorize_dest_home: "{{ dest.home if dest.home is defined else ssh_authorize_dest_homes[dest.host] }}"
     authorize_pubkey: >-
       {{ (ssh_authorize_slurped.results
           | selectattr('pubkey_path', 'equalto', dest._pubkey_path)

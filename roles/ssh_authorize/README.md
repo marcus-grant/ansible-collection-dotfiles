@@ -21,7 +21,8 @@ Optionally also writes the source host's pubkey into the **controller's** own
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `ssh_authorize_owner` | **yes** | — | User on both source and destination. Pubkeys are read from this user's `~/.ssh/` on the source; written to their `authorized_keys` on each destination. Resolved via `getent passwd`. |
-| `ssh_config_entries` | no | `[]` | List of destination entries, filtered to those with `ssh_authorize: true`. Mirrors the shape of `ssh_config` host entries (see below). |
+| `ssh_config_common_entries` | no | `[]` | Destination entries (common to all hosts), filtered to those with `ssh_authorize: true`. Mirrors the shape of `ssh_config` common entries. |
+| `ssh_config_host_entries` | no | `[]` | Destination entries (per-host), filtered to those with `ssh_authorize: true`. Mirrors the shape of `ssh_config` host entries. |
 | `ssh_authorize_extra` | no | `[]` | Additional destination entries not covered by `ssh_config_common_entries`/`ssh_config_host_entries`. Same format, no filtering — all entries are processed. |
 | `ssh_authorize_force` | no | `false` | When `true`, uses regexp-based matching on key-type + comment to replace a stale key line in `authorized_keys`. When `false`, exact-line match is used (no-op if already present). **Never set in vars files — pass as `-e ssh_authorize_force=true`.** |
 | `ssh_authorize_controller_user` | no | — | When defined, authorizes the source host's pubkey(s) into this user's `authorized_keys` on the Ansible controller. Acts as the feature enabler — if unset, the entire controller block is skipped. Resolved via `getent passwd` delegated to `localhost`. |
@@ -36,6 +37,7 @@ Both `ssh_config_common_entries`/`ssh_config_host_entries` and `ssh_authorize_ex
 | `host` | **yes** | — | Ansible inventory hostname of the destination. Used as `delegate_to` target. |
 | `identity_file` | no | `id_ed25519` | Filename (no extension) of the keypair in `~/.ssh/`. The `.pub` file is read. |
 | `ssh_authorize` | no | — | Set to `true` to include this entry when sourced from `ssh_config_common_entries`/`ssh_config_host_entries`. Entries without this key, or with `false`, are filtered out. |
+| `home` | no | resolved via `getent passwd` | Absolute path to the destination user's home directory. Skips the delegated `getent` lookup — required for hosts without `getent` (e.g. appliances with restricted shells such as OPNsense/FreeBSD). |
 
 ## Topology resolution
 
@@ -130,12 +132,12 @@ back to the controller.
 ### Version
 
 Introduced in `marcus_grant.dotfiles` **1.13.0**. Controller authorization
-added in **1.14.0**.
+added in **1.14.0**. Optional `home` override for destination entries added in **1.14.3**.
 
 ### Installation
 
 ```bash
-ansible-galaxy collection install marcus_grant.dotfiles:>=1.14.0
+ansible-galaxy collection install marcus_grant.dotfiles:>=1.14.3
 ```
 
 ### Force-replace a stale key
