@@ -108,6 +108,7 @@
           - "'Port 2222' in (ssh_config_verify_myserver_content.content | b64decode)"
           - "'IdentityFile ~/.ssh/id_ed25519_personal' in (ssh_config_verify_myserver_content.content | b64decode)"
           - "'SshAuthorize' not in (ssh_config_verify_myserver_content.content | b64decode)"
+          - "'Home' not in (ssh_config_verify_myserver_content.content | b64decode)"
 
     - name: Stat zz-managed-defaults.conf
       ansible.builtin.stat:

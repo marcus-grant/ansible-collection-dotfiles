@@ -46,8 +46,9 @@ ssh_config_host_entries:
     ssh_authorize: true        # reserved — passed through to ssh_authorize role, not rendered
 ```
 
-The `ssh_authorize` key is excluded from rendering. It is reserved for the
-`ssh_authorize` role, which reads it to determine where to distribute public keys.
+The `ssh_authorize` and `home` keys are excluded from rendering. They are
+reserved for use by other consumers of the shared entry list (`ssh_authorize`
+role) and must not produce SSH config directives.
 
 `ssh_config_defaults` keys follow the same snake_case convention:
 

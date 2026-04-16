@@ -32,7 +32,7 @@
     ssh_authorize_normalized: >-
       {{ ssh_authorize_normalized + [dest | combine({
         '_pubkey_path': ssh_authorize_home ~ '/.ssh/'
-                        ~ (dest.identity_file | default('id_ed25519'))
+                        ~ ((dest.identity_file | default('id_ed25519')) | basename)
                         ~ '.pub'
       })] }}
   loop: "{{ ssh_authorize_destinations }}"
@@ -90,7 +90,7 @@
 
 - name: Slurp controller-specific identity key
   ansible.builtin.slurp:
-    src: "{{ ssh_authorize_home }}/.ssh/{{ ssh_authorize_controller_identity_file }}.pub"
+    src: "{{ ssh_authorize_home }}/.ssh/{{ ssh_authorize_controller_identity_file | basename }}.pub"
   register: ssh_authorize_controller_slurp
   when:
     - ssh_authorize_controller_user is defined

@@ -8,6 +8,11 @@ source→destination SSH connectivity is required.
 Optionally also writes the source host's pubkey into the **controller's** own
 `authorized_keys`, enabling the source to SSH back into the controller.
 
+## Status: Not Production-Ready
+
+This role has known reliability issues on non-standard targets. Do not use in
+production without reading the Known Issues section below.
+
 ## Requirements
 
 - `openssh-client` (or equivalent) must be present on the **source** host so that
@@ -35,7 +40,7 @@ Both `ssh_config_common_entries`/`ssh_config_host_entries` and `ssh_authorize_ex
 | Key | Required | Default | Description |
 |---|---|---|---|
 | `host` | **yes** | — | Ansible inventory hostname of the destination. Used as `delegate_to` target. |
-| `identity_file` | no | `id_ed25519` | Filename (no extension) of the keypair in `~/.ssh/`. The `.pub` file is read. |
+| `identity_file` | no | `id_ed25519` | Filename stem, tilde path (`~/.ssh/id_ed25519`), or absolute path of the keypair. The basename is extracted internally and `.pub` is appended. Matches the verbatim path used in `ssh_config` entries. |
 | `ssh_authorize` | no | — | Set to `true` to include this entry when sourced from `ssh_config_common_entries`/`ssh_config_host_entries`. Entries without this key, or with `false`, are filtered out. |
 | `home` | no | resolved via `getent passwd` | Absolute path to the destination user's home directory. Skips the delegated `getent` lookup — required for hosts without `getent` (e.g. appliances with restricted shells such as OPNsense/FreeBSD). |
 
@@ -150,6 +155,49 @@ ansible-playbook site.yml -e ssh_authorize_force=true
 
 This is intentionally not automated — overwriting authorized keys requires
 explicit operator intent.
+
+## Known Issues
+
+### 1. Module execution fails on appliance targets (FreeBSD / OPNsense)
+
+Ansible module execution exits 127 on these targets despite Python being
+present and `PATH` correct when tested interactively. Root cause is under
+investigation — likely Ansible's module-path setup, shebang resolution, or
+`tmpdir` restrictions imposed by the restricted shell. Until resolved, this
+role cannot be used against appliance-class hosts.
+
+### 2. Home override (v1.14.3) does not fix appliance targets
+
+The `home:` key on a destination entry skips the delegated `getent` lookup,
+but all subsequent tasks (`ansible.builtin.file`, `ansible.builtin.lineinfile`)
+still execute on the destination host. Appliances fail at the same exit-127
+root cause one task later. The override only helps hosts that have `getent`
+absent but otherwise support full Ansible module execution — an uncommon
+combination.
+
+### 3. Force mode does not work for 2-field keys
+
+`ssh_authorize_force: true` uses a regexp on `^type .* comment$`, which is
+only valid when the key has a comment field (3 space-separated tokens). Keys
+with 2 fields (type + key body, no comment) fall back to exact-line match,
+meaning a stale 2-field key is never replaced. This is a silent no-op — no
+error is raised.
+
+### 4. Design assumes a Python interpreter on every destination
+
+The role uses `ansible.builtin.file` and `ansible.builtin.lineinfile`, which
+require Ansible's full module-execution stack on every destination host. This
+fails for exactly the category of hosts most likely to need opt-in key
+distribution — routers, appliances, and embedded systems. Candidate fix:
+switch to `ansible.posix.authorized_key` to reduce the execution surface, or
+use `ansible.builtin.raw` / `shell` for the write step.
+
+### 5. Role may be archived
+
+Given issues 1–4, the role is being evaluated for either a significant
+redesign or archival. If archived, a replacement approach (direct use of
+`ansible.posix.authorized_key` in plays, or a new role built around it) will
+be documented here.
 
 ## License
 

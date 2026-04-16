@@ -24,6 +24,8 @@
           - host: "{{ other_host }}"
             identity_file: id_ed25519
           - host: "{{ other_host }}"
+            identity_file: ~/.ssh/id_ed25519
+          - host: "{{ other_host }}"
             identity_file: id_custom
             home: /tmp/explicit-home-test
         ssh_authorize_controller_user: "{{ lookup('env', 'USER') }}"

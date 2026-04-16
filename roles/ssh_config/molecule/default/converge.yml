@@ -20,6 +20,7 @@
             port: 2222
             identity_file: ~/.ssh/id_ed25519_personal
             ssh_authorize: true
+            home: /tmp/some-path
         ssh_config_defaults:
           add_keys_to_agent: "yes"
           identities_only: "yes"

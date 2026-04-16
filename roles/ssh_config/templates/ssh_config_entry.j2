@@ -2,7 +2,7 @@
 
 Host {{ ssh_config_entry.host }}
 {% for key, val in ssh_config_entry.items() %}
-{% if key != 'host' and key != 'ssh_authorize' %}
+{% if key != 'host' and key != 'ssh_authorize' and key != 'home' %}
   {{ key.split('_') | map('capitalize') | join('') }} {{ val }}
 {% endif %}
 {% endfor %}
