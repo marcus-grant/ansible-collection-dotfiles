@@ -183,6 +183,14 @@ Each entry in `files`:
   * A role that installs then configures a ZSH shell environment using
     a clone git repo of ZSH dotfiles.
   * [*Role link!*](./roles/zsh/)
+* **gpg_transfer**
+  * *Description*:
+    Transfers existing GPG key material from an Ansible controller to target hosts.
+    Supports full key export or subkeys-only export per key. Copies ownertrust and
+    `gpg.conf`, writes `gpg-agent.conf`, and optionally creates a `~/.gnupg` symlink
+    pointing to a custom gnupg home. Idempotent — only transfers keys not already
+    present on the target. Passphrase must be supplied interactively via `vars_prompt`.
+  * [*Role link!*](./roles/gpg_transfer/)
 * **nodejs_system**
   * *Description*:
     System-level Node.js installation and management. Installs Node.js/npm 

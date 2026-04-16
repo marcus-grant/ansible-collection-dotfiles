@@ -1,0 +1,12 @@
+---
+# vars file for marcus_grant.dotfiles.gpg_transfer
+# Distro-specific package lists. Loaded via:
+#   lookup('vars', 'gpg_transfer_packages_' + ansible_os_family)
+
+gpg_transfer_packages_Debian:
+  - gnupg
+  - pinentry-curses
+
+gpg_transfer_packages_Archlinux:
+  - gnupg
+  - pinentry

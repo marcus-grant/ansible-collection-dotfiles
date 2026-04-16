@@ -1,0 +1,41 @@
+---
+- name: Verify symlink scenario post-state
+  hosts: debian12
+  gather_facts: false
+  tasks:
+    - name: Stat custom gnupghome directory
+      ansible.builtin.stat:
+        path: /home/testuser/.local/gnupg
+      register: custom_gnupghome_stat
+
+    - name: Assert custom gnupghome still exists
+      ansible.builtin.assert:
+        that: custom_gnupghome_stat.stat.exists and custom_gnupghome_stat.stat.isdir
+        fail_msg: "Custom gnupghome /home/testuser/.local/gnupg not found after failed symlink attempt"
+
+    - name: List secret keys at custom gnupghome
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir /home/testuser/.local/gnupg
+          --list-secret-keys --with-colons 2>/dev/null
+          | grep '^fpr:' | cut -d: -f10
+      changed_when: false
+      register: custom_gnupghome_fps
+
+    - name: Assert at least one key exists at custom gnupghome
+      ansible.builtin.assert:
+        that: custom_gnupghome_fps.stdout_lines | select('ne', '') | list | length > 0
+        fail_msg: "No keys found at custom gnupghome — keys were lost during failed symlink attempt"
+
+    - name: Stat ~/.gnupg after Play 2
+      ansible.builtin.stat:
+        path: /home/testuser/.gnupg
+      register: gnupg_after_play2_stat
+
+    - name: Assert ~/.gnupg is a real directory (not a symlink) after Play 2
+      ansible.builtin.assert:
+        that:
+          - gnupg_after_play2_stat.stat.exists
+          - gnupg_after_play2_stat.stat.isdir
+          - not gnupg_after_play2_stat.stat.islnk
+        fail_msg: "~/.gnupg should be a real directory after Play 2 setup but is not"

@@ -1,0 +1,209 @@
+---
+# Verify debian12: all three keys (A, B, C) present; agent config + ownertrust written.
+- name: Verify debian12 — all keys present
+  hosts: debian12
+  gather_facts: false
+  tasks:
+    - name: Slurp fingerprint A from controller
+      ansible.builtin.slurp:
+        src: /tmp/molecule-gpg-fp-a.txt
+      delegate_to: controller
+      become: false
+      no_log: true
+      register: _fp_a_raw
+
+    - name: Slurp fingerprint B from controller
+      ansible.builtin.slurp:
+        src: /tmp/molecule-gpg-fp-b.txt
+      delegate_to: controller
+      become: false
+      no_log: true
+      register: _fp_b_raw
+
+    - name: Slurp fingerprint C from controller
+      ansible.builtin.slurp:
+        src: /tmp/molecule-gpg-fp-c.txt
+      delegate_to: controller
+      become: false
+      no_log: true
+      register: _fp_c_raw
+
+    - name: Set fingerprint facts
+      ansible.builtin.set_fact:
+        fp_a: "{{ _fp_a_raw.content | b64decode | trim }}"
+        fp_b: "{{ _fp_b_raw.content | b64decode | trim }}"
+        fp_c: "{{ _fp_c_raw.content | b64decode | trim }}"
+      no_log: true
+
+    - name: List secret key fingerprints on debian12 target
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir /home/testuser/.gnupg
+          --list-secret-keys --with-colons 2>/dev/null
+          | grep '^fpr:' | cut -d: -f10
+      changed_when: false
+      register: debian12_fps
+
+    - name: Assert key A is present on debian12
+      ansible.builtin.assert:
+        that: fp_a in debian12_fps.stdout_lines
+        fail_msg: "Key A not found on debian12"
+
+    - name: Assert key B is present on debian12
+      ansible.builtin.assert:
+        that: fp_b in debian12_fps.stdout_lines
+        fail_msg: "Key B not found on debian12"
+
+    - name: Assert key C is present on debian12
+      ansible.builtin.assert:
+        that: fp_c in debian12_fps.stdout_lines
+        fail_msg: "Key C not found on debian12"
+
+    - name: Stat gpg-agent.conf on debian12
+      ansible.builtin.stat:
+        path: /home/testuser/.gnupg/gpg-agent.conf
+      register: debian12_agent_conf_stat
+
+    - name: Assert gpg-agent.conf exists on debian12
+      ansible.builtin.assert:
+        that: debian12_agent_conf_stat.stat.exists
+        fail_msg: "gpg-agent.conf not found on debian12"
+
+    - name: Assert gpg-agent.conf contains pinentry-curses
+      ansible.builtin.shell:
+        cmd: "grep -q 'pinentry-curses' /home/testuser/.gnupg/gpg-agent.conf"
+      changed_when: false
+
+    - name: Stat ownertrust.txt on debian12
+      ansible.builtin.stat:
+        path: /home/testuser/.gnupg/ownertrust.txt
+      register: debian12_ownertrust_stat
+
+    - name: Assert ownertrust.txt is present
+      ansible.builtin.assert:
+        that: debian12_ownertrust_stat.stat.exists
+        fail_msg: "ownertrust.txt not found on debian12"
+
+    - name: Assert ownertrust database is non-empty on debian12
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir /home/testuser/.gnupg --export-ownertrust 2>/dev/null
+          | grep -v '^#' | grep -v '^$'
+      changed_when: false
+      register: debian12_ownertrust_export
+      failed_when: debian12_ownertrust_export.stdout | length == 0
+
+# Verify archlinux: key A present (full), key B absent, key C subkeys only.
+- name: Verify archlinux — selective and subkeys-only
+  hosts: archlinux
+  gather_facts: false
+  tasks:
+    - name: Slurp fingerprint A from controller
+      ansible.builtin.slurp:
+        src: /tmp/molecule-gpg-fp-a.txt
+      delegate_to: controller
+      become: false
+      no_log: true
+      register: _fp_a_raw
+
+    - name: Slurp fingerprint B from controller
+      ansible.builtin.slurp:
+        src: /tmp/molecule-gpg-fp-b.txt
+      delegate_to: controller
+      become: false
+      no_log: true
+      register: _fp_b_raw
+
+    - name: Slurp fingerprint C from controller
+      ansible.builtin.slurp:
+        src: /tmp/molecule-gpg-fp-c.txt
+      delegate_to: controller
+      become: false
+      no_log: true
+      register: _fp_c_raw
+
+    - name: Set fingerprint facts
+      ansible.builtin.set_fact:
+        fp_a: "{{ _fp_a_raw.content | b64decode | trim }}"
+        fp_b: "{{ _fp_b_raw.content | b64decode | trim }}"
+        fp_c: "{{ _fp_c_raw.content | b64decode | trim }}"
+      no_log: true
+
+    - name: List secret key fingerprints on archlinux target
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir /home/testuser/.gnupg
+          --list-secret-keys --with-colons 2>/dev/null
+          | grep '^fpr:' | cut -d: -f10
+      changed_when: false
+      register: archlinux_fps
+
+    - name: Assert key A is present on archlinux (selective transfer)
+      ansible.builtin.assert:
+        that: fp_a in archlinux_fps.stdout_lines
+        fail_msg: "Key A not found on archlinux — selective transfer failed"
+
+    - name: Assert key B is absent on archlinux (was not selected)
+      ansible.builtin.assert:
+        that: fp_b not in archlinux_fps.stdout_lines
+        fail_msg: "Key B found on archlinux — should not have been transferred"
+
+    - name: Assert key C fingerprint is present on archlinux (subkeys-only adds stub)
+      ansible.builtin.assert:
+        that: fp_c in archlinux_fps.stdout_lines
+        fail_msg: "Key C fingerprint not found — subkeys-only transfer failed"
+
+    - name: Get key C primary secret stub status on archlinux
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir /home/testuser/.gnupg
+          --list-secret-keys --with-colons {{ fp_c }} 2>/dev/null
+          | awk -F: '/^sec/ { if ($1 == "sec#" || $15 == "#") { print "stub"; exit } print "present"; exit }'
+      changed_when: false
+      register: archlinux_key_c_stub_status
+      no_log: true
+
+    - name: Assert key C primary secret is a stub
+      ansible.builtin.assert:
+        that: archlinux_key_c_stub_status.stdout | trim == "stub"
+        fail_msg: "Key C primary is not a stub — subkeys-only transfer did not strip primary secret"
+
+    - name: Assert key C has subkeys present on archlinux
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir /home/testuser/.gnupg
+          --list-secret-keys --with-colons {{ fp_c }} 2>/dev/null
+          | grep '^ssb'
+      changed_when: false
+      register: archlinux_key_c_ssb
+      no_log: true
+
+    - name: Assert at least one ssb record exists for key C
+      ansible.builtin.assert:
+        that: archlinux_key_c_ssb.stdout_lines | length > 0
+        fail_msg: "No subkeys (ssb) found for key C on archlinux"
+
+    - name: Assert key C public primary is present on archlinux
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir /home/testuser/.gnupg
+          --list-keys --with-colons {{ fp_c }} 2>/dev/null
+          | grep '^pub'
+      changed_when: false
+      register: archlinux_key_c_pub
+      no_log: true
+
+    - name: Assert key C public key is present
+      ansible.builtin.assert:
+        that: archlinux_key_c_pub.stdout_lines | length > 0
+        fail_msg: "Key C public primary not found on archlinux after subkeys-only transfer"
+
+    - name: Stat gpg-agent.conf on archlinux
+      ansible.builtin.stat:
+        path: /home/testuser/.gnupg/gpg-agent.conf
+      register: archlinux_agent_conf_stat
+
+    - name: Assert gpg-agent.conf exists on archlinux
+      ansible.builtin.assert:
+        that: archlinux_agent_conf_stat.stat.exists
+        fail_msg: "gpg-agent.conf not found on archlinux"

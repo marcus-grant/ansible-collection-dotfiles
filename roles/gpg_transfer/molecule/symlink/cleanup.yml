@@ -1,0 +1,9 @@
+---
+- name: Cleanup controller — remove disposable GNUPGHOME
+  hosts: controller
+  gather_facts: false
+  tasks:
+    - name: Remove temp GNUPGHOME
+      ansible.builtin.file:
+        path: /tmp/molecule-gpg-transfer
+        state: absent

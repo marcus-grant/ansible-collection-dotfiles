@@ -1,0 +1,49 @@
+---
+- name: Verify — staging dirs wiped and no key material on target
+  hosts: debian12
+  gather_facts: false
+  tasks:
+    - name: List /dev/shm for any gpg_transfer staging dirs
+      ansible.builtin.shell:
+        cmd: "ls /dev/shm/ | grep '^gpg_transfer_'"
+      changed_when: false
+      failed_when: false
+      register: post_fail_staging
+
+    - name: Assert no staging dirs remain after failed transfer
+      ansible.builtin.assert:
+        that: post_fail_staging.stdout_lines | select('ne', '') | list | length == 0
+        fail_msg: >-
+          Residual gpg_transfer staging dirs found in /dev/shm after failed transfer:
+          {{ post_fail_staging.stdout }}
+
+    - name: List secret keys on target after failed transfer
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir /home/testuser/.gnupg
+          --list-secret-keys --with-colons 2>/dev/null
+          | grep '^fpr:' | cut -d: -f10
+      changed_when: false
+      failed_when: false
+      register: post_fail_fps
+
+    - name: Assert no key material landed on target
+      ansible.builtin.assert:
+        that: post_fail_fps.stdout_lines | select('ne', '') | list | length == 0
+        fail_msg: "Key material found on target after failed transfer — staging cleanup may be incomplete"
+
+    - name: Check controller staging also absent
+      ansible.builtin.shell:
+        cmd: "ls /dev/shm/ | grep '^gpg_transfer_'"
+      delegate_to: controller
+      become: false
+      changed_when: false
+      failed_when: false
+      register: controller_post_fail_staging
+
+    - name: Assert no controller staging dirs remain
+      ansible.builtin.assert:
+        that: controller_post_fail_staging.stdout_lines | select('ne', '') | list | length == 0
+        fail_msg: >-
+          Residual gpg_transfer staging dirs found in controller /dev/shm:
+          {{ controller_post_fail_staging.stdout }}

@@ -1,0 +1,8 @@
+# Managed by Ansible (marcus_grant.dotfiles.gpg_transfer)
+{% for key, value in gpg_transfer_agent_config.items() %}
+{% if value is sameas true %}
+{{ key }}
+{% else %}
+{{ key }} {{ value }}
+{% endif %}
+{% endfor %}

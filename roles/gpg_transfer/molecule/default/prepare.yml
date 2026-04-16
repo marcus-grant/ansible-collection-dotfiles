@@ -1,0 +1,147 @@
+---
+# Play 1: Prepare controller container — install GPG, generate disposable test keys.
+# Keys are generated ONLY on the controller container. Developer machine is never touched.
+- name: Prepare controller — generate disposable test keys
+  hosts: controller
+  gather_facts: true
+  become: true
+  become_user: root
+  vars:
+    test_gnupghome: /tmp/molecule-gpg-transfer
+    test_passphrase: "molecule-test-passphrase-disposable"
+  tasks:
+    - name: Install gnupg on controller
+      ansible.builtin.apt:
+        name: gnupg
+        state: present
+        update_cache: true
+
+    - name: Ensure temp GNUPGHOME exists on controller
+      ansible.builtin.file:
+        path: "{{ test_gnupghome }}"
+        state: directory
+        mode: '0700'
+
+    - name: Generate test key A (RSA 2048 with subkey)
+      ansible.builtin.command:
+        argv: [gpg, --homedir, "{{ test_gnupghome }}", --batch, --gen-key]
+        stdin: |
+          %echo generating test key A
+          Key-Type: RSA
+          Key-Length: 2048
+          Subkey-Type: RSA
+          Subkey-Length: 2048
+          Name-Real: Test User A
+          Name-Email: test-a@molecule.local
+          Expire-Date: 0
+          Passphrase: {{ test_passphrase }}
+          %commit
+      changed_when: true
+
+    - name: Generate test key B (RSA 2048, no subkey)
+      ansible.builtin.command:
+        argv: [gpg, --homedir, "{{ test_gnupghome }}", --batch, --gen-key]
+        stdin: |
+          %echo generating test key B
+          Key-Type: RSA
+          Key-Length: 2048
+          Key-Usage: sign
+          Name-Real: Test User B
+          Name-Email: test-b@molecule.local
+          Expire-Date: 0
+          Passphrase: {{ test_passphrase }}
+          %commit
+      changed_when: true
+
+    - name: Generate test key C (RSA 2048 with subkey, for subkeys-only test)
+      ansible.builtin.command:
+        argv: [gpg, --homedir, "{{ test_gnupghome }}", --batch, --gen-key]
+        stdin: |
+          %echo generating test key C
+          Key-Type: RSA
+          Key-Length: 2048
+          Subkey-Type: RSA
+          Subkey-Length: 2048
+          Name-Real: Test User C
+          Name-Email: test-c@molecule.local
+          Expire-Date: 0
+          Passphrase: {{ test_passphrase }}
+          %commit
+      changed_when: true
+
+    - name: Get primary fingerprint of key A
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir {{ test_gnupghome }} --list-secret-keys --with-colons
+          'test-a@molecule.local' | grep '^fpr:' | head -1 | cut -d: -f10
+      changed_when: false
+      register: _fp_a
+
+    - name: Save fingerprint A on controller
+      ansible.builtin.copy:
+        content: "{{ _fp_a.stdout }}"
+        dest: /tmp/molecule-gpg-fp-a.txt
+        mode: '0600'
+
+    - name: Get primary fingerprint of key B
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir {{ test_gnupghome }} --list-secret-keys --with-colons
+          'test-b@molecule.local' | grep '^fpr:' | head -1 | cut -d: -f10
+      changed_when: false
+      register: _fp_b
+
+    - name: Save fingerprint B on controller
+      ansible.builtin.copy:
+        content: "{{ _fp_b.stdout }}"
+        dest: /tmp/molecule-gpg-fp-b.txt
+        mode: '0600'
+
+    - name: Get primary fingerprint of key C
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir {{ test_gnupghome }} --list-secret-keys --with-colons
+          'test-c@molecule.local' | grep '^fpr:' | head -1 | cut -d: -f10
+      changed_when: false
+      register: _fp_c
+
+    - name: Save fingerprint C on controller
+      ansible.builtin.copy:
+        content: "{{ _fp_c.stdout }}"
+        dest: /tmp/molecule-gpg-fp-c.txt
+        mode: '0600'
+
+# Play 2: Prepare target containers — install GPG/pinentry and create testuser.
+- name: Prepare targets
+  hosts: debian12,archlinux
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    - name: Update apt cache (Debian)
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install gnupg and pinentry (Debian)
+      ansible.builtin.apt:
+        name:
+          - gnupg
+          - pinentry-curses
+        state: present
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install gnupg and pinentry (Arch)
+      community.general.pacman:
+        name:
+          - gnupg
+          - pinentry
+        state: present
+      when: ansible_facts['os_family'] == 'Archlinux'
+
+    - name: Create testuser with home directory
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true

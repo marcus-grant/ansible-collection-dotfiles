@@ -1,0 +1,46 @@
+---
+- name: Converge — failure cleanup test
+  hosts: debian12
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    - name: Assert no gpg_transfer staging dirs exist before test (clean slate)
+      ansible.builtin.shell:
+        cmd: "ls /dev/shm/ | grep '^gpg_transfer_'"
+      changed_when: false
+      failed_when: false
+      register: pre_test_staging_check
+
+    - name: Assert staging dirs absent before test
+      ansible.builtin.assert:
+        that: pre_test_staging_check.stdout_lines | length == 0
+        fail_msg: "Leftover staging dirs found in /dev/shm before test: {{ pre_test_staging_check.stdout }}"
+
+    - name: Initialize transfer fail result as not-failed
+      ansible.builtin.set_fact:
+        transfer_fail_result:
+          failed: false
+
+    - name: Apply gpg_transfer with intentionally wrong passphrase (expect failure)
+      block:
+        - ansible.builtin.include_role:
+            name: marcus_grant.dotfiles.gpg_transfer
+          vars:
+            gpg_transfer_owner: testuser
+            gpg_transfer_controller_host: controller
+            gpg_transfer_controller_gnupghome: /tmp/molecule-gpg-transfer
+            gpg_transfer_keys: "all"
+            gpg_transfer_passphrase: "WRONG-PASSPHRASE-INTENTIONAL"
+            gpg_transfer_gpg_conf: false
+            gpg_transfer_ownertrust: false
+      rescue:
+        - name: Record that role failed as expected
+          ansible.builtin.set_fact:
+            transfer_fail_result:
+              failed: true
+
+    - name: Assert role failed due to wrong passphrase
+      ansible.builtin.assert:
+        that: transfer_fail_result.failed
+        fail_msg: "Role should have failed with wrong passphrase but succeeded"

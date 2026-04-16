@@ -1,0 +1,181 @@
+---
+# Called from main.yml when gpg_transfer_needed_fps is non-empty.
+# All tasks carry no_log: true. Staging dirs are in /dev/shm (tmpfs) and are
+# always cleaned up in the always: block regardless of success or failure.
+
+- name: Initialize transfer item list
+  ansible.builtin.set_fact:
+    gpg_transfer_items: []
+  no_log: true
+
+- name: Build transfer item list (fingerprint + export flag per key)
+  ansible.builtin.set_fact:
+    gpg_transfer_items: >-
+      {{ gpg_transfer_items + [{
+        'fp': gpg_transfer_fp,
+        'flag': '--export-secret-subkeys'
+                if ((gpg_transfer_keys == 'all'
+                     and gpg_transfer_default_export_mode == 'subkeys')
+                    or (gpg_transfer_keys != 'all'
+                        and (gpg_transfer_keys
+                             | selectattr('fingerprint', 'equalto', gpg_transfer_fp)
+                             | map(attribute='export_mode')
+                             | list or [gpg_transfer_default_export_mode])[0]
+                        == 'subkeys'))
+                else '--export-secret-keys'
+      }] }}
+  loop: "{{ gpg_transfer_needed_fps }}"
+  loop_control:
+    loop_var: gpg_transfer_fp
+  no_log: true
+
+- name: Transfer secret key material
+  no_log: true
+  block:
+    - name: Create controller staging directory on tmpfs
+      ansible.builtin.tempfile:
+        path: /dev/shm
+        state: directory
+        prefix: gpg_transfer_
+      delegate_to: "{{ gpg_transfer_controller_host }}"
+      become: false
+      no_log: true
+      register: gpg_transfer_controller_staging
+
+    - name: Create target staging directory on tmpfs
+      ansible.builtin.tempfile:
+        path: /dev/shm
+        state: directory
+        prefix: gpg_transfer_
+      become: true
+      become_user: root
+      no_log: true
+      register: gpg_transfer_target_staging
+
+    - name: Set target staging directory ownership to gpg_transfer_owner
+      ansible.builtin.file:
+        path: "{{ gpg_transfer_target_staging.path }}"
+        state: directory
+        owner: "{{ gpg_transfer_owner }}"
+        group: "{{ gpg_transfer_owner }}"
+        mode: '0700'
+      become: true
+      become_user: root
+      no_log: true
+
+    - name: Export secret key to controller staging
+      ansible.builtin.command:
+        argv:
+          - gpg
+          - --homedir
+          - "{{ gpg_transfer_controller_gnupghome_abs }}"
+          - --batch
+          - --pinentry-mode
+          - loopback
+          - --passphrase-fd
+          - "0"
+          - "{{ gpg_transfer_item.flag }}"
+          - --armor
+          - --output
+          - "{{ gpg_transfer_controller_staging.path }}/{{ gpg_transfer_item.fp }}.asc"
+          - "{{ gpg_transfer_item.fp }}"
+        stdin: "{{ gpg_transfer_passphrase }}"
+      delegate_to: "{{ gpg_transfer_controller_host }}"
+      become: false
+      no_log: true
+      changed_when: true
+      loop: "{{ gpg_transfer_items }}"
+      loop_control:
+        loop_var: gpg_transfer_item
+
+    - name: Slurp exported keys from controller staging
+      ansible.builtin.slurp:
+        src: "{{ gpg_transfer_controller_staging.path }}/{{ gpg_transfer_item.fp }}.asc"
+      delegate_to: "{{ gpg_transfer_controller_host }}"
+      become: false
+      no_log: true
+      register: gpg_transfer_key_slurps
+      loop: "{{ gpg_transfer_items }}"
+      loop_control:
+        loop_var: gpg_transfer_item
+
+    - name: Copy slurped key material to target staging
+      ansible.builtin.copy:
+        content: "{{ gpg_transfer_key_slurps.results[gpg_transfer_idx].content | b64decode }}"
+        dest: "{{ gpg_transfer_target_staging.path }}/{{ gpg_transfer_item.fp }}.asc"
+        owner: "{{ gpg_transfer_owner }}"
+        group: "{{ gpg_transfer_owner }}"
+        mode: '0600'
+      become: true
+      become_user: root
+      no_log: true
+      loop: "{{ gpg_transfer_items }}"
+      loop_control:
+        loop_var: gpg_transfer_item
+        index_var: gpg_transfer_idx
+
+    - name: Import secret key on target
+      become: true
+      become_user: "{{ gpg_transfer_owner }}"
+      ansible.builtin.command:
+        argv:
+          - gpg
+          - --homedir
+          - "{{ gpg_transfer_gnupghome_abs }}"
+          - --batch
+          - --import
+          - "{{ gpg_transfer_target_staging.path }}/{{ gpg_transfer_item.fp }}.asc"
+      no_log: true
+      changed_when: true
+      loop: "{{ gpg_transfer_items }}"
+      loop_control:
+        loop_var: gpg_transfer_item
+
+    - name: List fingerprints on target post-import
+      become: true
+      become_user: "{{ gpg_transfer_owner }}"
+      ansible.builtin.shell:
+        cmd: >-
+          gpg --homedir {{ gpg_transfer_gnupghome_abs }}
+          --list-secret-keys --with-colons 2>/dev/null
+          | grep '^fpr:' | cut -d: -f10
+      register: gpg_transfer_post_import_fps_result
+      changed_when: false
+      no_log: true
+      when: gpg_transfer_verify
+
+    - name: Set post-import fingerprints fact
+      ansible.builtin.set_fact:
+        gpg_transfer_post_import_fps: >-
+          {{ gpg_transfer_post_import_fps_result.stdout_lines
+             | select('ne', '') | list }}
+      no_log: true
+      when: gpg_transfer_verify
+
+    - name: Verify all transferred fingerprints are present on target
+      ansible.builtin.fail:
+        msg: "Imported key fingerprint mismatch"
+      loop: "{{ gpg_transfer_needed_fps }}"
+      loop_control:
+        loop_var: gpg_transfer_fp
+      when: gpg_transfer_verify and gpg_transfer_fp not in gpg_transfer_post_import_fps
+      no_log: true
+
+  always:
+    - name: Remove controller staging directory
+      ansible.builtin.file:
+        path: "{{ gpg_transfer_controller_staging.path }}"
+        state: absent
+      delegate_to: "{{ gpg_transfer_controller_host }}"
+      become: false
+      no_log: true
+      when: gpg_transfer_controller_staging is defined and gpg_transfer_controller_staging.path is defined
+
+    - name: Remove target staging directory
+      ansible.builtin.file:
+        path: "{{ gpg_transfer_target_staging.path }}"
+        state: absent
+      become: true
+      become_user: root
+      no_log: true
+      when: gpg_transfer_target_staging is defined and gpg_transfer_target_staging.path is defined

@@ -1,0 +1,76 @@
+---
+# Play 1: debian12 — transfer ALL keys from controller container.
+- name: Converge debian12 — all keys transfer
+  hosts: debian12
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    - name: Apply gpg_transfer role (all keys)
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.gpg_transfer
+      vars:
+        gpg_transfer_owner: testuser
+        gpg_transfer_controller_host: controller
+        gpg_transfer_controller_gnupghome: /tmp/molecule-gpg-transfer
+        gpg_transfer_keys: "all"
+        gpg_transfer_passphrase: "molecule-test-passphrase-disposable"
+        gpg_transfer_ownertrust: true
+        gpg_transfer_gpg_conf: false
+
+# Play 2: archlinux — selective transfer (key A only) then subkeys-only (key C).
+- name: Converge archlinux — selective and subkeys-only transfer
+  hosts: archlinux
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    - name: Slurp fingerprint A from controller
+      ansible.builtin.slurp:
+        src: /tmp/molecule-gpg-fp-a.txt
+      delegate_to: controller
+      become: false
+      no_log: true
+      register: _fp_a_raw
+
+    - name: Slurp fingerprint C from controller
+      ansible.builtin.slurp:
+        src: /tmp/molecule-gpg-fp-c.txt
+      delegate_to: controller
+      become: false
+      no_log: true
+      register: _fp_c_raw
+
+    - name: Set fingerprint facts
+      ansible.builtin.set_fact:
+        fp_a: "{{ _fp_a_raw.content | b64decode | trim }}"
+        fp_c: "{{ _fp_c_raw.content | b64decode | trim }}"
+      no_log: true
+
+    - name: Apply gpg_transfer role (key A only, full export mode)
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.gpg_transfer
+      vars:
+        gpg_transfer_owner: testuser
+        gpg_transfer_controller_host: controller
+        gpg_transfer_controller_gnupghome: /tmp/molecule-gpg-transfer
+        gpg_transfer_keys:
+          - fingerprint: "{{ fp_a }}"
+            export_mode: "full"
+        gpg_transfer_passphrase: "molecule-test-passphrase-disposable"
+        gpg_transfer_ownertrust: false
+        gpg_transfer_gpg_conf: false
+
+    - name: Apply gpg_transfer role (key C subkeys only)
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.gpg_transfer
+      vars:
+        gpg_transfer_owner: testuser
+        gpg_transfer_controller_host: controller
+        gpg_transfer_controller_gnupghome: /tmp/molecule-gpg-transfer
+        gpg_transfer_keys:
+          - fingerprint: "{{ fp_c }}"
+            export_mode: "subkeys"
+        gpg_transfer_passphrase: "molecule-test-passphrase-disposable"
+        gpg_transfer_ownertrust: false
+        gpg_transfer_gpg_conf: false

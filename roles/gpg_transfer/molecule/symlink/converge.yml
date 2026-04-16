@@ -1,0 +1,93 @@
+---
+- name: Converge — symlink creation and fail-on-real-dir
+  hosts: debian12
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    # Happy path — create symlink from ~/.gnupg to custom gnupghome.
+    - name: Apply gpg_transfer with custom gnupghome and symlink creation
+      ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.gpg_transfer
+      vars:
+        gpg_transfer_owner: testuser
+        gpg_transfer_controller_host: controller
+        gpg_transfer_controller_gnupghome: /tmp/molecule-gpg-transfer
+        gpg_transfer_keys: "all"
+        gpg_transfer_passphrase: "molecule-test-passphrase-disposable"
+        gpg_transfer_gnupghome: /home/testuser/.local/gnupg
+        gpg_transfer_create_symlink: true
+        gpg_transfer_gpg_conf: false
+        gpg_transfer_ownertrust: false
+
+    # Inline assertions before mutating state for the fail path.
+    - name: Stat ~/.gnupg symlink
+      ansible.builtin.stat:
+        path: /home/testuser/.gnupg
+      register: gnupg_symlink_stat
+
+    - name: Assert ~/.gnupg is a symlink
+      ansible.builtin.assert:
+        that: gnupg_symlink_stat.stat.islnk
+        fail_msg: "~/.gnupg is not a symlink after gpg_transfer_create_symlink"
+
+    - name: Assert symlink points to custom gnupghome
+      ansible.builtin.assert:
+        that: gnupg_symlink_stat.stat.lnk_target == '/home/testuser/.local/gnupg'
+        fail_msg: >-
+          ~/.gnupg symlink points to {{ gnupg_symlink_stat.stat.lnk_target }}
+          instead of /home/testuser/.local/gnupg
+
+    - name: Stat gpg-agent.conf via custom gnupghome path
+      ansible.builtin.stat:
+        path: /home/testuser/.local/gnupg/gpg-agent.conf
+      register: gpg_agent_conf_stat
+
+    - name: Assert gpg-agent.conf exists at custom gnupghome
+      ansible.builtin.assert:
+        that: gpg_agent_conf_stat.stat.exists
+        fail_msg: "gpg-agent.conf not found at /home/testuser/.local/gnupg/gpg-agent.conf"
+
+    # Fail path — destroy symlink, create real directory, role must fail.
+    - name: Remove existing symlink
+      ansible.builtin.file:
+        path: /home/testuser/.gnupg
+        state: absent
+
+    - name: Create real directory at ~/.gnupg
+      ansible.builtin.file:
+        path: /home/testuser/.gnupg
+        state: directory
+        mode: '0700'
+        owner: testuser
+        group: testuser
+
+    - name: Initialize fail-path result as not-failed
+      ansible.builtin.set_fact:
+        symlink_fail_result:
+          failed: false
+
+    - name: Apply gpg_transfer with real dir at ~/.gnupg (expect failure)
+      block:
+        - ansible.builtin.include_role:
+            name: marcus_grant.dotfiles.gpg_transfer
+          vars:
+            gpg_transfer_owner: testuser
+            gpg_transfer_controller_host: controller
+            gpg_transfer_controller_gnupghome: /tmp/molecule-gpg-transfer
+            gpg_transfer_keys: "all"
+            gpg_transfer_passphrase: "molecule-test-passphrase-disposable"
+            gpg_transfer_gnupghome: /home/testuser/.local/gnupg
+            gpg_transfer_create_symlink: true
+            gpg_transfer_gpg_conf: false
+            gpg_transfer_ownertrust: false
+      rescue:
+        - name: Record that role failed as expected
+          ansible.builtin.set_fact:
+            symlink_fail_result:
+              failed: true
+
+    - name: Assert role failed when ~/.gnupg is a real directory
+      ansible.builtin.assert:
+        that: symlink_fail_result.failed
+        fail_msg: "Role should have failed when ~/.gnupg is a real directory but did not"

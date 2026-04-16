@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  role_name: gpg_transfer
+  author: marcus_grant
+  description: >
+    Transfer existing GPG key material from an Ansible controller to target hosts
+    over an already-authenticated SSH channel. Enables targets to use the operator's
+    GPG identity for pass, git signing, and similar tools.
+  issue_tracker_url: https://github.com/marcus-grant/ansible-collection-dotfiles/issues
+  license: GPL-2.0-or-later
+  min_ansible_version: '2.15'
+  platforms:
+    - name: Debian
+      versions:
+        - 12
+        - 11
+    - name: Archlinux
+      versions:
+        - all
+  galaxy_tags:
+    - dotfiles
+    - gpg
+    - security
+    - keys
+
+dependencies: []

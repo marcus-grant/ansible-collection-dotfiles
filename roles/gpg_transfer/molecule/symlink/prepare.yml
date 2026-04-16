@@ -1,0 +1,60 @@
+---
+- name: Prepare controller — generate one disposable test key
+  hosts: controller
+  gather_facts: true
+  become: true
+  become_user: root
+  vars:
+    test_gnupghome: /tmp/molecule-gpg-transfer
+    test_passphrase: "molecule-test-passphrase-disposable"
+  tasks:
+    - name: Install gnupg on controller
+      ansible.builtin.apt:
+        name: gnupg
+        state: present
+        update_cache: true
+
+    - name: Ensure temp GNUPGHOME exists on controller
+      ansible.builtin.file:
+        path: "{{ test_gnupghome }}"
+        state: directory
+        mode: '0700'
+
+    - name: Generate test key A
+      ansible.builtin.command:
+        argv: [gpg, --homedir, "{{ test_gnupghome }}", --batch, --gen-key]
+        stdin: |
+          %echo generating test key A
+          Key-Type: RSA
+          Key-Length: 2048
+          Key-Usage: sign
+          Name-Real: Test User A
+          Name-Email: test-a@molecule.local
+          Expire-Date: 0
+          Passphrase: {{ test_passphrase }}
+          %commit
+      changed_when: true
+
+- name: Prepare target
+  hosts: debian12
+  gather_facts: true
+  become: true
+  become_user: root
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install gnupg and pinentry-curses
+      ansible.builtin.apt:
+        name:
+          - gnupg
+          - pinentry-curses
+        state: present
+
+    - name: Create testuser with home directory
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true

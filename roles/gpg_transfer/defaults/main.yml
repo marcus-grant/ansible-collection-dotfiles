@@ -1,0 +1,56 @@
+---
+# defaults file for marcus_grant.dotfiles.gpg_transfer
+
+# Key selection: "all" transfers every secret key on the controller.
+# Alternatively, a list of dicts with 'fingerprint' and optional 'export_mode'.
+gpg_transfer_keys: "all"
+
+# Export mode when gpg_transfer_keys is "all", or when a list entry omits export_mode.
+# "full"    → gpg --export-secret-keys    (full key including primary)
+# "subkeys" → gpg --export-secret-subkeys (subkeys only, primary stays on controller)
+gpg_transfer_default_export_mode: "full"
+
+# Target-side gnupg directory. Expanded via getent passwd per collection convention.
+gpg_transfer_gnupghome: "~/.gnupg"
+
+# Controller-side gnupg source path. Override when controller gnupg home is non-default.
+gpg_transfer_controller_gnupghome: "~/.gnupg"
+
+# Host that holds the GPG keys on the controller side.
+# In production: localhost (the Ansible control node that holds GPG keys).
+# In molecule: set to the controller container name.
+gpg_transfer_controller_host: localhost
+
+# When true and gpg_transfer_gnupghome differs from ~/.gnupg, create ~/.gnupg as a
+# symlink pointing to gpg_transfer_gnupghome. Fails if ~/.gnupg already exists as a
+# real directory — manual intervention required.
+gpg_transfer_create_symlink: false
+
+# Dict of key-value pairs rendered into gpg-agent.conf on the target.
+# Boolean true renders as a bare directive (no value). Strings render as "key value".
+gpg_transfer_agent_config:
+  pinentry-program: "/usr/bin/pinentry-curses"
+  allow-loopback-pinentry: true
+
+# When true, export the controller's ownertrust database and import on the target.
+gpg_transfer_ownertrust: true
+
+# When true, copy the controller's gpg.conf to the target's gnupg home.
+# Skipped silently when the controller has no gpg.conf.
+gpg_transfer_gpg_conf: true
+
+# When true, verify imported fingerprints on target match source after transfer.
+# Mismatch causes a hard fail. Set false to skip verification on re-runs where a
+# downstream role (e.g. pass_store) provides functional verification.
+gpg_transfer_verify: true
+
+# Additional packages appended to the distro-specific package list at install time.
+gpg_transfer_extra_packages: []
+
+# gpg_transfer_owner: REQUIRED, no default.
+#   The user on the target host who owns the gnupg directory and keyring.
+
+# gpg_transfer_passphrase: no default.
+#   Must be populated via vars_prompt or equivalent secure exchange.
+#   Only used when keys need transferring. Skipped on idempotent re-runs.
+#   NEVER store this in vault or variable files — see README.

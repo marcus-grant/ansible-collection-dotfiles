@@ -1,0 +1,244 @@
+---
+# no_log: true on every task — secret material may flow through any step.
+
+- name: Assert gpg_transfer_owner is defined
+  ansible.builtin.assert:
+    that: gpg_transfer_owner is defined
+    fail_msg: "gpg_transfer_owner is required"
+  no_log: true
+
+- name: Install GPG packages
+  become: true
+  become_user: root
+  ansible.builtin.package:
+    name: "{{ lookup('vars', 'gpg_transfer_packages_' + ansible_os_family)
+               + gpg_transfer_extra_packages }}"
+    state: present
+  no_log: true
+
+- name: Resolve home for gpg_transfer_owner
+  ansible.builtin.command: "getent passwd {{ gpg_transfer_owner }}"
+  register: gpg_transfer_getent
+  changed_when: false
+  no_log: true
+
+- name: Set gpg_transfer_home fact
+  ansible.builtin.set_fact:
+    gpg_transfer_home: "{{ gpg_transfer_getent.stdout.split(':')[5] }}"
+  no_log: true
+
+- name: Expand target gnupghome path
+  ansible.builtin.set_fact:
+    gpg_transfer_gnupghome_abs: "{{ gpg_transfer_gnupghome | replace('~', gpg_transfer_home) }}"
+  no_log: true
+
+- name: Resolve controller user home directory
+  ansible.builtin.shell:
+    cmd: "getent passwd $(id -un)"
+  delegate_to: "{{ gpg_transfer_controller_host }}"
+  become: false
+  changed_when: false
+  no_log: true
+  register: gpg_transfer_controller_getent
+
+- name: Set gpg_transfer_controller_home fact
+  ansible.builtin.set_fact:
+    gpg_transfer_controller_home: "{{ gpg_transfer_controller_getent.stdout.split(':')[5] }}"
+  no_log: true
+
+- name: Expand controller gnupghome path
+  ansible.builtin.set_fact:
+    gpg_transfer_controller_gnupghome_abs: >-
+      {{ gpg_transfer_controller_gnupghome | replace('~', gpg_transfer_controller_home) }}
+  no_log: true
+
+- name: Ensure target gnupg directory exists
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ gpg_transfer_gnupghome_abs }}"
+    state: directory
+    mode: '0700'
+    owner: "{{ gpg_transfer_owner }}"
+    group: "{{ gpg_transfer_owner }}"
+  no_log: true
+
+- name: Stat default ~/.gnupg on target (symlink check)
+  ansible.builtin.stat:
+    path: "{{ gpg_transfer_home }}/.gnupg"
+  register: gpg_transfer_default_gnupghome_stat
+  no_log: true
+  when: gpg_transfer_create_symlink and gpg_transfer_gnupghome_abs != gpg_transfer_home ~ '/.gnupg'
+
+- name: Fail if ~/.gnupg exists as a real directory (cannot create symlink)
+  ansible.builtin.fail:
+    msg: >-
+      ~/.gnupg exists as a real directory at {{ gpg_transfer_home }}/.gnupg.
+      Remove or migrate it manually before enabling gpg_transfer_create_symlink.
+  when: >-
+    gpg_transfer_create_symlink
+    and gpg_transfer_gnupghome_abs != gpg_transfer_home ~ '/.gnupg'
+    and gpg_transfer_default_gnupghome_stat.stat.exists
+    and gpg_transfer_default_gnupghome_stat.stat.isdir
+    and not gpg_transfer_default_gnupghome_stat.stat.islnk
+  no_log: true
+
+- name: Create ~/.gnupg symlink pointing to custom gnupghome
+  become: true
+  become_user: "{{ gpg_transfer_owner }}"
+  ansible.builtin.file:
+    path: "{{ gpg_transfer_home }}/.gnupg"
+    src: "{{ gpg_transfer_gnupghome_abs }}"
+    state: link
+  no_log: true
+  when: gpg_transfer_create_symlink and gpg_transfer_gnupghome_abs != gpg_transfer_home ~ '/.gnupg'
+
+- name: List existing secret key fingerprints on target
+  become: true
+  become_user: "{{ gpg_transfer_owner }}"
+  ansible.builtin.shell:
+    cmd: >-
+      gpg --homedir {{ gpg_transfer_gnupghome_abs }}
+      --list-secret-keys --with-colons 2>/dev/null
+      | grep '^fpr:' | cut -d: -f10
+  register: gpg_transfer_target_fps_result
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Set target fingerprints fact
+  ansible.builtin.set_fact:
+    gpg_transfer_target_fps: >-
+      {{ gpg_transfer_target_fps_result.stdout_lines | select('ne', '') | list }}
+  no_log: true
+
+- name: List secret key fingerprints on controller
+  ansible.builtin.shell:
+    cmd: >-
+      gpg --homedir {{ gpg_transfer_controller_gnupghome_abs }}
+      --list-secret-keys --with-colons 2>/dev/null
+      | grep '^fpr:' | cut -d: -f10
+  delegate_to: "{{ gpg_transfer_controller_host }}"
+  become: false
+  register: gpg_transfer_controller_fps_result
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Set controller fingerprints fact
+  ansible.builtin.set_fact:
+    gpg_transfer_controller_fps: >-
+      {{ gpg_transfer_controller_fps_result.stdout_lines | select('ne', '') | list }}
+  no_log: true
+
+- name: Compute fingerprints that need transferring (all mode)
+  ansible.builtin.set_fact:
+    gpg_transfer_needed_fps: >-
+      {{ gpg_transfer_controller_fps | difference(gpg_transfer_target_fps) }}
+  no_log: true
+  when: gpg_transfer_keys == 'all'
+
+- name: Compute fingerprints that need transferring (list mode)
+  ansible.builtin.set_fact:
+    gpg_transfer_needed_fps: >-
+      {{ gpg_transfer_keys | map(attribute='fingerprint') | list
+         | difference(gpg_transfer_target_fps) }}
+  no_log: true
+  when: gpg_transfer_keys != 'all'
+
+- name: Assert gpg_transfer_passphrase is defined when transfer is needed
+  ansible.builtin.assert:
+    that: gpg_transfer_passphrase is defined
+    fail_msg: >-
+      gpg_transfer_passphrase is required when keys need transferring.
+      Populate it via vars_prompt — never from vault or variable files.
+  no_log: true
+  when: gpg_transfer_needed_fps | length > 0
+
+- name: Transfer keys
+  ansible.builtin.include_tasks:
+    file: transfer.yml
+  no_log: true
+  when: gpg_transfer_needed_fps | length > 0
+
+- name: Export ownertrust from controller
+  ansible.builtin.command:
+    argv:
+      - gpg
+      - --homedir
+      - "{{ gpg_transfer_controller_gnupghome_abs }}"
+      - --export-ownertrust
+  delegate_to: "{{ gpg_transfer_controller_host }}"
+  become: false
+  changed_when: false
+  no_log: true
+  register: gpg_transfer_ownertrust_export
+  when: gpg_transfer_ownertrust
+
+- name: Copy ownertrust to target
+  ansible.builtin.copy:
+    content: "{{ gpg_transfer_ownertrust_export.stdout_lines | reject('match', '^#') | reject('equalto', '') | join('\n') }}\n"
+    dest: "{{ gpg_transfer_gnupghome_abs }}/ownertrust.txt"
+    mode: '0600'
+    owner: "{{ gpg_transfer_owner }}"
+    group: "{{ gpg_transfer_owner }}"
+  become: true
+  become_user: root
+  no_log: true
+  register: gpg_transfer_ownertrust_copy
+  when: gpg_transfer_ownertrust
+
+- name: Import ownertrust on target
+  become: true
+  become_user: "{{ gpg_transfer_owner }}"
+  ansible.builtin.command:
+    argv:
+      - gpg
+      - --homedir
+      - "{{ gpg_transfer_gnupghome_abs }}"
+      - --import-ownertrust
+      - "{{ gpg_transfer_gnupghome_abs }}/ownertrust.txt"
+  no_log: true
+  changed_when: true
+  when: gpg_transfer_ownertrust and gpg_transfer_ownertrust_copy.changed
+
+- name: Stat gpg.conf on controller
+  ansible.builtin.stat:
+    path: "{{ gpg_transfer_controller_gnupghome_abs }}/gpg.conf"
+  delegate_to: "{{ gpg_transfer_controller_host }}"
+  become: false
+  no_log: true
+  register: gpg_transfer_gpg_conf_stat
+  when: gpg_transfer_gpg_conf
+
+- name: Slurp gpg.conf from controller
+  ansible.builtin.slurp:
+    src: "{{ gpg_transfer_controller_gnupghome_abs }}/gpg.conf"
+  delegate_to: "{{ gpg_transfer_controller_host }}"
+  become: false
+  no_log: true
+  register: gpg_transfer_gpg_conf_slurp
+  when: gpg_transfer_gpg_conf and gpg_transfer_gpg_conf_stat.stat.exists
+
+- name: Copy gpg.conf to target
+  ansible.builtin.copy:
+    content: "{{ gpg_transfer_gpg_conf_slurp.content | b64decode }}"
+    dest: "{{ gpg_transfer_gnupghome_abs }}/gpg.conf"
+    mode: '0600'
+    owner: "{{ gpg_transfer_owner }}"
+    group: "{{ gpg_transfer_owner }}"
+  become: true
+  become_user: root
+  no_log: true
+  when: gpg_transfer_gpg_conf and gpg_transfer_gpg_conf_stat.stat.exists
+
+- name: Write gpg-agent.conf on target
+  become: true
+  become_user: root
+  ansible.builtin.template:
+    src: gpg-agent.conf.j2
+    dest: "{{ gpg_transfer_gnupghome_abs }}/gpg-agent.conf"
+    mode: '0600'
+    owner: "{{ gpg_transfer_owner }}"
+    group: "{{ gpg_transfer_owner }}"
+  no_log: true
