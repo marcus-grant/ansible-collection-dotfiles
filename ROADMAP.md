@@ -44,6 +44,23 @@ re-publish requires a new namespace claim if the current namespace changes.
 
 ---
 
+### secrets_scaffold role (required for v2.0)
+
+**What:** A role that creates and manages the secrets base directory with
+correct ownership and permissions. Currently handled ad-hoc via playbook
+`pre_tasks`. Should be a proper role that other roles (`gpg_transfer`,
+`password_store`) can declare as a dependency.
+
+**Why:** Both `gpg_transfer` and `password_store` assume the secrets base
+directory exists with correct permissions. Without a shared role, every
+integrator must reproduce the same pre_task boilerplate — and mistakes
+(wrong owner, wrong mode) cause silent failures downstream.
+
+**Constraint:** Must ship before v2.0. Other roles should not declare a
+hard dependency on it until it exists and is tested.
+
+---
+
 ## Deferred / Unscoped
 
 Items without a version target. Assigned to the next relevant version once
@@ -92,6 +109,51 @@ the same user — the per-role vars are redundant.
 
 **Constraint:** Each role must still accept its own `_owner` var for standalone
 use. The collection-level var would be a default-of-defaults, not a replacement.
+
+### Shell Environment Variable Management (v2.0+)
+
+Two new collection modules for managing shell environment variables across roles.
+
+**`shell_env_lookup`** — discovery. Given a variable name and a target user:
+  - Spawns the user's default shell, checks if the variable exists
+  - If set, reports its current value
+  - Optionally traces which sourced file defines the export
+    (`.profile`, `.bashrc`, `.zshenv`, `profile.d` drop-ins)
+  - Returns: `exists` (bool), `value` (str), `source_file` (path),
+    `source_line` (int)
+  - Read-only, no mutations
+
+**`shell_env_set`** — mutation. Given a file path, variable name, desired value:
+  - Absent from file → appends inside a managed block
+    (`# BEGIN managed by ansible` / `# END managed by ansible`)
+  - Present in managed block with wrong value → updates in place
+  - Present outside managed block → reports conflict, does not clobber
+  - Present with correct value → no-op
+  - Idempotent by design
+
+**Motivation:** Multiple roles need shell env vars set (`PASSWORD_STORE_DIR`,
+`PYENV_ROOT`, `UV_PYTHON_PREFERENCE`, etc.). Profile.d drop-ins require the
+operator to have a sourcing mechanism. These modules provide a generic,
+role-agnostic approach regardless of shell configuration strategy.
+`shell_env_lookup` answers "is this set, and where?" — enabling informed
+role decisions. `shell_env_set` answers "ensure this value is set in this
+file" — replacing fragile grep/sed patterns with idempotent mutations.
+
+### Normalise profile drop-in order prefixes and managed- naming (pre-v2)
+
+**What:** Audit all roles that write profile.d drop-ins and standardise:
+  - Numeric load-order prefix (currently ad-hoc: `password_store` uses `53`,
+    others unset)
+  - The `managed-` infix in filenames (introduced with `password_store`,
+    not yet backfilled to older roles)
+
+**Why:** Without a shared convention, drop-in filenames across roles are
+inconsistent. Load order has implicit dependencies (e.g. `PYENV_ROOT` must
+be set before any role that calls `pyenv`). A documented ordering scheme
+prevents silent breakage.
+
+**Constraint:** Normalising existing filenames is a breaking change for any
+operator who sources drop-ins by exact name. Coordinate with the v2.0 rename.
 
 ### Replace community.general.pacman with ansible.builtin.package
 

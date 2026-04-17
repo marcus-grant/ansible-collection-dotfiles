@@ -36,9 +36,14 @@
         that: password_store_profile_dropin_dir | length > 0
         fail_msg: "password_store_profile_dropin_dir is required when password_store_profile_dropin is true"
 
+    - name: Set _password_store_profile_dropin_dir_abs fact
+      ansible.builtin.set_fact:
+        _password_store_profile_dropin_dir_abs: >-
+          {{ password_store_profile_dropin_dir | replace('~', _password_store_home) }}
+
     - name: Stat profile dropin directory
       ansible.builtin.stat:
-        path: "{{ password_store_profile_dropin_dir }}"
+        path: "{{ _password_store_profile_dropin_dir_abs }}"
       register: _dropin_dir_stat
 
     - name: Assert profile dropin directory exists
@@ -47,5 +52,5 @@
           - _dropin_dir_stat.stat.exists
           - _dropin_dir_stat.stat.isdir
         fail_msg: >-
-          password_store_profile_dropin_dir '{{ password_store_profile_dropin_dir }}'
+          password_store_profile_dropin_dir '{{ _password_store_profile_dropin_dir_abs }}'
           does not exist on target

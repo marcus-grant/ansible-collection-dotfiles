@@ -1,5 +1,5 @@
 ---
-# Play 1: Set up prerequisites on targets
+# Set up prerequisites on targets
 - name: Set up test users and dropin directory
   hosts: debian12,archlinux
   gather_facts: false
@@ -16,7 +16,14 @@
         state: directory
         mode: "0750"
 
-# Play 2: Happy path — default dir
+    - name: Create tilde-path dropin directory under testuser home
+      ansible.builtin.file:
+        path: /home/testuser/test-profile-d
+        state: directory
+        owner: testuser
+        mode: "0750"
+
+# Happy path — default dir
 - name: Test assert with default password_store_dir
   hosts: debian12,archlinux
   gather_facts: true
@@ -47,7 +54,7 @@
         dest: /tmp/assert-fact-needs-symlink-default-type
         mode: "0644"
 
-# Play 3: Custom dir, dropin disabled — symlink required
+# Custom dir, dropin disabled — symlink required
 - name: Test assert with custom dir and dropin disabled
   hosts: debian12,archlinux
   gather_facts: true
@@ -73,7 +80,7 @@
         dest: /tmp/assert-fact-needs-symlink-custom-nodropin-type
         mode: "0644"
 
-# Play 4: Custom dir, dropin enabled — no symlink needed
+# Custom dir, dropin enabled — no symlink needed
 - name: Test assert with custom dir and dropin enabled
   hosts: debian12,archlinux
   gather_facts: true
@@ -101,7 +108,28 @@
         dest: /tmp/assert-fact-needs-symlink-custom-dropin-type
         mode: "0644"
 
-# Play 5: Missing owner — expect failure
+# Tilde dropin dir — verify ~ expands to owner home not root
+- name: Test assert expands tilde in password_store_profile_dropin_dir
+  hosts: debian12,archlinux
+  gather_facts: true
+  tasks:
+    - ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.password_store
+        tasks_from: assert.yml
+      vars:
+        password_store_owner: testuser
+        password_store_repo: "git://controller/pass-remote.git"
+        password_store_preflight_check: false
+        password_store_profile_dropin: true
+        password_store_profile_dropin_dir: "~/test-profile-d"
+
+    - name: Write _password_store_profile_dropin_dir_abs for verify
+      ansible.builtin.copy:
+        content: "{{ _password_store_profile_dropin_dir_abs }}"
+        dest: /tmp/assert-fact-dropin-dir-abs-tilde
+        mode: "0644"
+
+# Missing owner — expect failure
 - name: Test assert catches empty password_store_owner
   hosts: debian12,archlinux
   gather_facts: true
@@ -119,7 +147,7 @@
             dest: /tmp/assert-sentinel-missing-owner
             mode: "0644"
 
-# Play 6: Missing repo — expect failure
+# Missing repo — expect failure
 - name: Test assert catches empty password_store_repo
   hosts: debian12,archlinux
   gather_facts: true
@@ -137,7 +165,7 @@
             dest: /tmp/assert-sentinel-missing-repo
             mode: "0644"
 
-# Play 7: Dropin enabled, dir absent — expect failure
+# Dropin enabled, dir absent — expect failure
 - name: Test assert catches absent dropin directory
   hosts: debian12,archlinux
   gather_facts: true

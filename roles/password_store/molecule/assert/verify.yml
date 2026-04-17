@@ -94,6 +94,19 @@
           _password_store_needs_symlink is not a boolean —
           got type {{ _fact_needs_symlink_dropin_type.content | b64decode | trim }}
 
+    # --- Tilde expansion in dropin dir ---
+    - name: Read _password_store_profile_dropin_dir_abs (tilde path)
+      ansible.builtin.slurp:
+        src: /tmp/assert-fact-dropin-dir-abs-tilde
+      register: _fact_dropin_dir_abs_tilde
+
+    - name: Assert dropin dir tilde expands to owner home not root
+      ansible.builtin.assert:
+        that: (_fact_dropin_dir_abs_tilde.content | b64decode | trim) == '/home/testuser/test-profile-d'
+        fail_msg: >-
+          Expected /home/testuser/test-profile-d,
+          got {{ _fact_dropin_dir_abs_tilde.content | b64decode | trim }}
+
     # --- Failure cases: sentinels must exist ---
     - name: Stat missing-owner sentinel
       ansible.builtin.stat:
