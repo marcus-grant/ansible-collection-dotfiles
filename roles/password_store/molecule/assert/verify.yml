@@ -1,0 +1,126 @@
+---
+# Verifies assert.yml behaviour only.
+# Internal facts written to /tmp by converge after successful role runs.
+# Sentinel files written by converge rescue blocks indicate expected failures.
+
+- name: Verify assert input validation and path computation
+  hosts: debian12,archlinux
+  gather_facts: false
+  tasks:
+    # --- Happy path: default dir ---
+    - name: Read _password_store_dir_abs (default)
+      ansible.builtin.slurp:
+        src: /tmp/assert-fact-dir-abs-default
+      register: _fact_dir_abs_default
+
+    - name: Assert _password_store_dir_abs resolves ~ to home (default)
+      ansible.builtin.assert:
+        that: _fact_dir_abs_default.content | b64decode | trim == '/home/testuser/.password-store'
+        fail_msg: >-
+          Expected /home/testuser/.password-store,
+          got {{ _fact_dir_abs_default.content | b64decode | trim }}
+
+    - name: Read _password_store_needs_symlink (default)
+      ansible.builtin.slurp:
+        src: /tmp/assert-fact-needs-symlink-default
+      register: _fact_needs_symlink_default
+
+    - name: Assert _password_store_needs_symlink is false for default dir
+      ansible.builtin.assert:
+        that: (_fact_needs_symlink_default.content | b64decode | trim) == 'False'
+        fail_msg: >-
+          Expected False (default dir needs no symlink),
+          got {{ _fact_needs_symlink_default.content | b64decode | trim }}
+
+    - name: Read _password_store_needs_symlink type (default)
+      ansible.builtin.slurp:
+        src: /tmp/assert-fact-needs-symlink-default-type
+      register: _fact_needs_symlink_default_type
+
+    - name: Assert _password_store_needs_symlink is a real boolean (default)
+      ansible.builtin.assert:
+        that: (_fact_needs_symlink_default_type.content | b64decode | trim) == 'bool'
+        fail_msg: >-
+          _password_store_needs_symlink is not a boolean —
+          got type {{ _fact_needs_symlink_default_type.content | b64decode | trim }}
+
+    # --- Custom dir, dropin disabled: symlink required ---
+    - name: Read _password_store_needs_symlink (custom dir, no dropin)
+      ansible.builtin.slurp:
+        src: /tmp/assert-fact-needs-symlink-custom-nodropin
+      register: _fact_needs_symlink_custom
+
+    - name: Assert _password_store_needs_symlink is true for custom dir without dropin
+      ansible.builtin.assert:
+        that: (_fact_needs_symlink_custom.content | b64decode | trim) == 'True'
+        fail_msg: >-
+          Expected True (custom dir without dropin requires symlink),
+          got {{ _fact_needs_symlink_custom.content | b64decode | trim }}
+
+    - name: Read _password_store_needs_symlink type (custom, no dropin)
+      ansible.builtin.slurp:
+        src: /tmp/assert-fact-needs-symlink-custom-nodropin-type
+      register: _fact_needs_symlink_custom_type
+
+    - name: Assert _password_store_needs_symlink is a real boolean (custom, no dropin)
+      ansible.builtin.assert:
+        that: (_fact_needs_symlink_custom_type.content | b64decode | trim) == 'bool'
+        fail_msg: >-
+          _password_store_needs_symlink is not a boolean —
+          got type {{ _fact_needs_symlink_custom_type.content | b64decode | trim }}
+
+    # --- Custom dir, dropin enabled: no symlink needed ---
+    - name: Read _password_store_needs_symlink (custom dir, dropin enabled)
+      ansible.builtin.slurp:
+        src: /tmp/assert-fact-needs-symlink-custom-dropin
+      register: _fact_needs_symlink_dropin
+
+    - name: Assert _password_store_needs_symlink is false when dropin enabled
+      ansible.builtin.assert:
+        that: (_fact_needs_symlink_dropin.content | b64decode | trim) == 'False'
+        fail_msg: >-
+          Expected False (dropin enabled, no symlink needed),
+          got {{ _fact_needs_symlink_dropin.content | b64decode | trim }}
+
+    - name: Read _password_store_needs_symlink type (custom, dropin enabled)
+      ansible.builtin.slurp:
+        src: /tmp/assert-fact-needs-symlink-custom-dropin-type
+      register: _fact_needs_symlink_dropin_type
+
+    - name: Assert _password_store_needs_symlink is a real boolean (custom, dropin enabled)
+      ansible.builtin.assert:
+        that: (_fact_needs_symlink_dropin_type.content | b64decode | trim) == 'bool'
+        fail_msg: >-
+          _password_store_needs_symlink is not a boolean —
+          got type {{ _fact_needs_symlink_dropin_type.content | b64decode | trim }}
+
+    # --- Failure cases: sentinels must exist ---
+    - name: Stat missing-owner sentinel
+      ansible.builtin.stat:
+        path: /tmp/assert-sentinel-missing-owner
+      register: _sentinel_missing_owner
+
+    - name: Assert role failed when password_store_owner is empty
+      ansible.builtin.assert:
+        that: _sentinel_missing_owner.stat.exists
+        fail_msg: assert.yml did not catch missing password_store_owner
+
+    - name: Stat missing-repo sentinel
+      ansible.builtin.stat:
+        path: /tmp/assert-sentinel-missing-repo
+      register: _sentinel_missing_repo
+
+    - name: Assert role failed when password_store_repo is empty
+      ansible.builtin.assert:
+        that: _sentinel_missing_repo.stat.exists
+        fail_msg: assert.yml did not catch missing password_store_repo
+
+    - name: Stat dropin-dir-missing sentinel
+      ansible.builtin.stat:
+        path: /tmp/assert-sentinel-dropin-dir-missing
+      register: _sentinel_dropin_dir
+
+    - name: Assert role failed when dropin enabled but dir absent
+      ansible.builtin.assert:
+        that: _sentinel_dropin_dir.stat.exists
+        fail_msg: assert.yml did not catch missing password_store_profile_dropin_dir

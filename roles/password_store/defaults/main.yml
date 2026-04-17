@@ -1,0 +1,13 @@
+---
+# Required — no defaults
+# password_store_repo: ""
+# password_store_owner: ""
+
+password_store_dir: "~/.password-store"
+password_store_controller_host: "localhost"
+password_store_preflight_check: true
+password_store_profile_dropin: false
+password_store_profile_dropin_dir: "{{ profile_d_path | default('~/.config/profile.d') }}"
+password_store_profile_dropin_order: "53"
+password_store_verify_entry: ""
+password_store_extra_packages: []

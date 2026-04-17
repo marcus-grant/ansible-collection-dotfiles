@@ -191,6 +191,13 @@ Each entry in `files`:
     pointing to a custom gnupg home. Idempotent — only transfers keys not already
     present on the target. Passphrase must be supplied interactively via `vars_prompt`.
   * [*Role link!*](./roles/gpg_transfer/)
+* **password_store**
+  * *Description*:
+    Clones an existing git-backed password store to target hosts and optionally
+    writes a profile drop-in exporting `PASSWORD_STORE_DIR`. Supports custom store
+    paths with automatic symlink or drop-in configuration. Requires `community.general`
+    for Archlinux package management.
+  * [*Role link!*](./roles/password_store/)
 * **nodejs_system**
   * *Description*:
     System-level Node.js installation and management. Installs Node.js/npm 

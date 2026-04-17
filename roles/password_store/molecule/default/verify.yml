@@ -1,0 +1,129 @@
+---
+# Case 1: default dir — store cloned to ~/.password-store
+# Case 2: custom dir + dropin — store at custom path, dropin exports correct PASSWORD_STORE_DIR
+# Case 3: custom dir + no dropin — store at custom path, symlink at ~/.password-store
+
+- name: Verify default scenario
+  hosts: debian12,archlinux
+  gather_facts: false
+  tasks:
+    # --- Case 1: default dir ---
+    - name: Stat ~/.password-store (testuser, default)
+      ansible.builtin.stat:
+        path: /home/testuser/.password-store
+      register: _store1
+
+    - name: Assert store directory exists (default)
+      ansible.builtin.assert:
+        that: _store1.stat.exists and _store1.stat.isdir
+        fail_msg: /home/testuser/.password-store does not exist or is not a directory
+
+    - name: Stat ~/.password-store/.git (testuser, default)
+      ansible.builtin.stat:
+        path: /home/testuser/.password-store/.git
+      register: _store1_git
+
+    - name: Assert store is a git repo (default)
+      ansible.builtin.assert:
+        that: _store1_git.stat.exists and _store1_git.stat.isdir
+        fail_msg: /home/testuser/.password-store/.git missing — not a git repo
+
+    # --- Case 2: custom dir + dropin ---
+    - name: Stat custom store dir (testuser2, custom + dropin)
+      ansible.builtin.stat:
+        path: /home/testuser2/.local/share/pass-store
+      register: _store2
+
+    - name: Assert custom store directory exists (dropin)
+      ansible.builtin.assert:
+        that: _store2.stat.exists and _store2.stat.isdir
+        fail_msg: /home/testuser2/.local/share/pass-store does not exist
+
+    - name: Stat custom store .git (testuser2, dropin)
+      ansible.builtin.stat:
+        path: /home/testuser2/.local/share/pass-store/.git
+      register: _store2_git
+
+    - name: Assert custom store is a git repo (dropin)
+      ansible.builtin.assert:
+        that: _store2_git.stat.exists and _store2_git.stat.isdir
+        fail_msg: /home/testuser2/.local/share/pass-store/.git missing
+
+    - name: Stat symlink at ~/.password-store (testuser2, dropin — should NOT exist)
+      ansible.builtin.stat:
+        path: /home/testuser2/.password-store
+      register: _symlink2
+
+    - name: Assert no symlink at ~/.password-store when dropin enabled (testuser2)
+      ansible.builtin.assert:
+        that: not _symlink2.stat.exists
+        fail_msg: >-
+          /home/testuser2/.password-store should not exist when dropin is enabled,
+          but it was found
+
+    - name: Find dropin file for testuser2
+      ansible.builtin.find:
+        paths: /tmp/test-profile-d
+        patterns: "*-managed-password_store.sh"
+      register: _dropin2_find
+
+    - name: Assert dropin file was created (testuser2)
+      ansible.builtin.assert:
+        that: _dropin2_find.files | length == 1
+        fail_msg: password_store.sh not found in /tmp/test-profile-d
+
+    - name: Slurp dropin file content (testuser2)
+      ansible.builtin.slurp:
+        src: "{{ _dropin2_find.files[0].path }}"
+      register: _dropin2_content
+
+    - name: Assert dropin exports correct PASSWORD_STORE_DIR value (testuser2)
+      ansible.builtin.assert:
+        that: >-
+          '/home/testuser2/.local/share/pass-store' in
+          (_dropin2_content.content | b64decode)
+        fail_msg: >-
+          dropin file does not contain /home/testuser2/.local/share/pass-store —
+          got: {{ _dropin2_content.content | b64decode }}
+
+    # --- Case 3: custom dir + no dropin ---
+    - name: Stat custom store dir (testuser3, custom + no dropin)
+      ansible.builtin.stat:
+        path: /home/testuser3/.local/share/pass-store
+      register: _store3
+
+    - name: Assert custom store directory exists (no dropin)
+      ansible.builtin.assert:
+        that: _store3.stat.exists and _store3.stat.isdir
+        fail_msg: /home/testuser3/.local/share/pass-store does not exist
+
+    - name: Stat custom store .git (testuser3, no dropin)
+      ansible.builtin.stat:
+        path: /home/testuser3/.local/share/pass-store/.git
+      register: _store3_git
+
+    - name: Assert custom store is a git repo (no dropin)
+      ansible.builtin.assert:
+        that: _store3_git.stat.exists and _store3_git.stat.isdir
+        fail_msg: /home/testuser3/.local/share/pass-store/.git missing
+
+    - name: Stat symlink at ~/.password-store (testuser3, no dropin — must exist)
+      ansible.builtin.stat:
+        path: /home/testuser3/.password-store
+        follow: false
+      register: _symlink3
+
+    - name: Assert symlink exists at ~/.password-store (testuser3, no dropin)
+      ansible.builtin.assert:
+        that: _symlink3.stat.exists and _symlink3.stat.islnk
+        fail_msg: >-
+          /home/testuser3/.password-store should be a symlink but was not found
+          or is not a symlink
+
+    - name: Assert symlink points to correct target (testuser3)
+      ansible.builtin.assert:
+        that: >-
+          _symlink3.stat.lnk_target == '/home/testuser3/.local/share/pass-store'
+        fail_msg: >-
+          symlink target is {{ _symlink3.stat.lnk_target }},
+          expected /home/testuser3/.local/share/pass-store

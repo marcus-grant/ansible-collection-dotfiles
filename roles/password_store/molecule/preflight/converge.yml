@@ -1,0 +1,95 @@
+---
+# Play 1: Dirty the controller store before preflight tests
+- name: Dirty controller store
+  hosts: controller
+  gather_facts: false
+  tasks:
+    - name: Add untracked file to controller pass store
+      ansible.builtin.file:
+        path: /root/.password-store/test-dirty-file
+        state: touch
+        mode: "0644"
+      changed_when: false
+
+# Play 2: preflight=true with dirty store — expect failure
+- name: Test preflight catches dirty controller store
+  hosts: debian12,archlinux
+  gather_facts: false
+  tasks:
+    - name: Ensure testuser exists
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true
+
+    - name: Run role with preflight=true, dirty store (expect failure)
+      block:
+        - ansible.builtin.include_role:
+            name: marcus_grant.dotfiles.password_store
+            tasks_from: preflight.yml
+          vars:
+            password_store_owner: testuser
+            password_store_repo: "git://controller/pass-remote.git"
+            password_store_preflight_check: true
+            password_store_controller_host: controller
+      rescue:
+        - name: Record expected preflight failure
+          ansible.builtin.copy:
+            content: "{{ ansible_failed_result.msg | default('preflight caught dirty store') }}"
+            dest: /tmp/preflight-dirty-caught
+            mode: "0644"
+
+# Play 3: preflight=false with dirty store — should succeed
+- name: Test preflight=false ignores dirty controller store
+  hosts: debian12,archlinux
+  gather_facts: false
+  tasks:
+    - name: Run role with preflight=false, dirty store (should succeed)
+      block:
+        - ansible.builtin.include_role:
+            name: marcus_grant.dotfiles.password_store
+            tasks_from: assert.yml
+          vars:
+            password_store_owner: testuser
+            password_store_repo: "git://controller/pass-remote.git"
+            password_store_preflight_check: false
+            password_store_controller_host: controller
+      rescue:
+        - name: Record unexpected failure (preflight=false should not fail)
+          ansible.builtin.copy:
+            content: "{{ ansible_failed_result.msg | default('unexpected failure') }}"
+            dest: /tmp/preflight-disabled-failed
+            mode: "0644"
+
+# Play 4: Clean the controller store
+- name: Clean controller store
+  hosts: controller
+  gather_facts: false
+  tasks:
+    - name: Remove dirty file from controller pass store
+      ansible.builtin.file:
+        path: /root/.password-store/test-dirty-file
+        state: absent
+      changed_when: false
+
+# Play 5: preflight=true with clean store — should succeed
+- name: Test preflight=true with clean controller store
+  hosts: debian12,archlinux
+  gather_facts: false
+  tasks:
+    - name: Run role with preflight=true, clean store (should succeed)
+      block:
+        - ansible.builtin.include_role:
+            name: marcus_grant.dotfiles.password_store
+            tasks_from: preflight.yml
+          vars:
+            password_store_owner: testuser
+            password_store_repo: "git://controller/pass-remote.git"
+            password_store_preflight_check: true
+            password_store_controller_host: controller
+      rescue:
+        - name: Record unexpected failure (clean store should not fail)
+          ansible.builtin.copy:
+            content: "{{ ansible_failed_result.msg | default('unexpected failure') }}"
+            dest: /tmp/preflight-clean-failed
+            mode: "0644"

@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: marcus_grant
+  namespace: marcus_grant
+  role_name: password_store
+  description: Clone an existing git-backed password store to target hosts
+  license: GPL-2.0-or-later
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions: [bookworm]
+    - name: Archlinux
+      versions: [all]
+
+dependencies: []

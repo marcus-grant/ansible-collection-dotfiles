@@ -1,0 +1,8 @@
+FROM archlinux:latest
+
+RUN pacman -Syu --noconfirm && \
+    pacman -S --noconfirm python sudo
+
+RUN echo "%wheel ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+CMD ["/bin/bash"]

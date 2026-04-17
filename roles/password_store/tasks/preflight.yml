@@ -1,0 +1,41 @@
+---
+- name: Check if pass exists on controller
+  ansible.builtin.command: which pass
+  delegate_to: "{{ password_store_controller_host }}"
+  become: false
+  register: _pass_exists
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Check controller store state and fail if unclean
+  when: _pass_exists.rc == 0
+  delegate_to: "{{ password_store_controller_host }}"
+  become: false
+  no_log: true
+  block:
+    - name: Check controller store for uncommitted changes
+      ansible.builtin.command: pass git status --porcelain
+      register: _pass_git_status
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if controller store has uncommitted changes
+      ansible.builtin.fail:
+        msg: >-
+          Controller password store has uncommitted changes — commit or stash
+          before deploying, or set password_store_preflight_check: false to skip
+      when: _pass_git_status.stdout | trim | length > 0
+
+    - name: Check controller store for unpushed commits
+      ansible.builtin.command: pass git log @{u}..HEAD
+      register: _pass_git_unpushed
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if controller store has unpushed commits
+      ansible.builtin.fail:
+        msg: >-
+          Controller password store has unpushed commits — push before deploying,
+          or set password_store_preflight_check: false to skip
+      when: _pass_git_unpushed.stdout | trim | length > 0

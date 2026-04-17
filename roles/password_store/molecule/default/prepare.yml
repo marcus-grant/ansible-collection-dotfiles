@@ -1,0 +1,138 @@
+---
+# All GPG keys and pass store data exist only inside the controller container.
+# No host paths are referenced. Developer machine state is never touched.
+
+- name: Prepare controller — install pass, create store, expose via git daemon
+  hosts: controller
+  gather_facts: true
+  pre_tasks:
+    - name: Update apt cache and install git, gnupg, pass on controller
+      ansible.builtin.apt:
+        name: [git, gnupg, pass]
+        update_cache: true
+    - name: Configure git global user for root
+      community.general.git_config:
+        name: "{{ item.prop }}"
+        value: "{{ item.value }}"
+        scope: global
+      loop:
+        - {prop: user.name,  value: "Test Controller"}
+        - {prop: user.email, value: "test@controller.local"}
+  tasks:
+
+    - name: Create /root/.gnupg directory
+      ansible.builtin.file:
+        path: /root/.gnupg
+        state: directory
+        mode: "0700"
+
+    - name: Create root gpg.conf for loopback pinentry
+      ansible.builtin.copy:
+        content: "pinentry-mode loopback\n"
+        dest: /root/.gnupg/gpg.conf
+        mode: "0600"
+
+    - name: Write GPG batch key spec
+      ansible.builtin.copy:
+        content: |
+          %no-protection
+          Key-Type: RSA
+          Key-Length: 2048
+          Name-Real: Test Controller
+          Name-Email: test@controller.local
+          Expire-Date: 0
+          %commit
+        dest: /tmp/gpg-batch.txt
+        mode: "0600"
+
+    - name: Generate disposable GPG key
+      ansible.builtin.command: gpg --batch --pinentry-mode loopback --gen-key /tmp/gpg-batch.txt
+      args:
+        creates: /root/.gnupg/trustdb.gpg
+
+    - name: Get GPG fingerprint
+      ansible.builtin.command: gpg --list-keys --with-colons test@controller.local
+      register: _gpg_list
+      changed_when: false
+
+    - name: Set fingerprint fact
+      ansible.builtin.set_fact:
+        _controller_fpr: >-
+          {{ _gpg_list.stdout_lines
+             | select('match', '^fpr:')
+             | list | first
+             | split(':')
+             | select('truthy')
+             | list | last }}
+
+    - name: Initialise pass store with disposable key
+      ansible.builtin.command: "pass init {{ _controller_fpr }}"
+      args:
+        creates: /root/.password-store/.gpg-id
+
+    - name: Ensure pass store is a git repository
+      ansible.builtin.command: pass git init
+      args:
+        creates: /root/.password-store/.git
+
+    - name: Insert canary entry into pass store
+      ansible.builtin.shell: echo 'canary-secret' | pass insert --echo test/canary
+      args:
+        creates: /root/.password-store/test/canary.gpg
+
+    - name: Create bare git remote directory
+      ansible.builtin.file:
+        path: /opt/git-repos
+        state: directory
+        mode: "0755"
+
+    - name: Initialise bare git remote
+      ansible.builtin.command: git init --bare /opt/git-repos/pass-remote.git
+      args:
+        creates: /opt/git-repos/pass-remote.git/HEAD
+
+    - name: Check if remote origin already configured
+      ansible.builtin.command: pass git remote get-url origin
+      register: _remote_check
+      changed_when: false
+      failed_when: false
+
+    - name: Add git remote to pass store
+      ansible.builtin.command: pass git remote add origin /opt/git-repos/pass-remote.git
+      when: _remote_check.rc != 0
+
+    - name: Push pass store to bare remote
+      ansible.builtin.command: pass git push -u origin HEAD
+      changed_when: true
+
+    - name: Start git daemon and record PID atomically
+      ansible.builtin.shell: |
+        nohup git daemon --reuseaddr --base-path=/opt/git-repos \
+          --export-all --listen=0.0.0.0 &>/dev/null &
+        echo $! > /var/run/git-daemon.pid
+      args:
+        creates: /var/run/git-daemon.pid
+
+- name: Prepare targets — install git and register controller host
+  hosts: debian12,archlinux
+  gather_facts: true
+  tasks:
+    - name: Install git (Debian)
+      ansible.builtin.apt:
+        name: git
+        update_cache: true
+      when: ansible_os_family == 'Debian'
+
+    - name: Install git (Archlinux)
+      community.general.pacman:
+        name: git
+        state: present
+        update_cache: true
+      when: ansible_os_family == 'Archlinux'
+
+    - name: Add controller to /etc/hosts
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars['controller']['ansible_default_ipv4']['address'] }} controller"
+        state: present
+        unsafe_writes: true

@@ -1,0 +1,25 @@
+---
+# Controller only needs a bare git repo served by git daemon.
+# No GPG, no pass, no store initialisation needed for assert tests.
+
+- name: Prepare controller — serve bare git repo
+  hosts: controller
+  gather_facts: false
+  tasks:
+    - name: Install git on controller
+      ansible.builtin.apt:
+        name: git
+        update_cache: true
+
+    - name: Initialise bare git repo
+      ansible.builtin.command: git init --bare /opt/git-repos/pass-remote.git
+      args:
+        creates: /opt/git-repos/pass-remote.git/HEAD
+
+    - name: Start git daemon and record PID atomically
+      ansible.builtin.shell: |
+        nohup git daemon --reuseaddr --base-path=/opt/git-repos \
+          --export-all --listen=0.0.0.0 &>/dev/null &
+        echo $! > /var/run/git-daemon.pid
+      args:
+        creates: /var/run/git-daemon.pid

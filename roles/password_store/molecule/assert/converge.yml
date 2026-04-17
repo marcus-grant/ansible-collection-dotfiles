@@ -1,0 +1,158 @@
+---
+# Play 1: Set up prerequisites on targets
+- name: Set up test users and dropin directory
+  hosts: debian12,archlinux
+  gather_facts: false
+  tasks:
+    - name: Create testuser
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true
+
+    - name: Create dropin directory for dropin-enabled test
+      ansible.builtin.file:
+        path: /tmp/test-profile-d
+        state: directory
+        mode: "0750"
+
+# Play 2: Happy path — default dir
+- name: Test assert with default password_store_dir
+  hosts: debian12,archlinux
+  gather_facts: true
+  tasks:
+    - ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.password_store
+        tasks_from: assert.yml
+      vars:
+        password_store_owner: testuser
+        password_store_repo: "git://controller/pass-remote.git"
+        password_store_preflight_check: false
+
+    - name: Write _password_store_dir_abs for verify
+      ansible.builtin.copy:
+        content: "{{ _password_store_dir_abs }}"
+        dest: /tmp/assert-fact-dir-abs-default
+        mode: "0644"
+
+    - name: Write _password_store_needs_symlink for verify
+      ansible.builtin.copy:
+        content: "{{ _password_store_needs_symlink | string }}"
+        dest: /tmp/assert-fact-needs-symlink-default
+        mode: "0644"
+
+    - name: Write _password_store_needs_symlink type for verify
+      ansible.builtin.copy:
+        content: "{{ _password_store_needs_symlink | type_debug }}"
+        dest: /tmp/assert-fact-needs-symlink-default-type
+        mode: "0644"
+
+# Play 3: Custom dir, dropin disabled — symlink required
+- name: Test assert with custom dir and dropin disabled
+  hosts: debian12,archlinux
+  gather_facts: true
+  tasks:
+    - ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.password_store
+        tasks_from: assert.yml
+      vars:
+        password_store_owner: testuser
+        password_store_repo: "git://controller/pass-remote.git"
+        password_store_preflight_check: false
+        password_store_dir: "~/.local/share/pass-store"
+
+    - name: Write _password_store_needs_symlink for verify
+      ansible.builtin.copy:
+        content: "{{ _password_store_needs_symlink | string }}"
+        dest: /tmp/assert-fact-needs-symlink-custom-nodropin
+        mode: "0644"
+
+    - name: Write _password_store_needs_symlink type for verify
+      ansible.builtin.copy:
+        content: "{{ _password_store_needs_symlink | type_debug }}"
+        dest: /tmp/assert-fact-needs-symlink-custom-nodropin-type
+        mode: "0644"
+
+# Play 4: Custom dir, dropin enabled — no symlink needed
+- name: Test assert with custom dir and dropin enabled
+  hosts: debian12,archlinux
+  gather_facts: true
+  tasks:
+    - ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.password_store
+        tasks_from: assert.yml
+      vars:
+        password_store_owner: testuser
+        password_store_repo: "git://controller/pass-remote.git"
+        password_store_preflight_check: false
+        password_store_dir: "~/.local/share/pass-store"
+        password_store_profile_dropin: true
+        password_store_profile_dropin_dir: /tmp/test-profile-d
+
+    - name: Write _password_store_needs_symlink for verify
+      ansible.builtin.copy:
+        content: "{{ _password_store_needs_symlink | string }}"
+        dest: /tmp/assert-fact-needs-symlink-custom-dropin
+        mode: "0644"
+
+    - name: Write _password_store_needs_symlink type for verify
+      ansible.builtin.copy:
+        content: "{{ _password_store_needs_symlink | type_debug }}"
+        dest: /tmp/assert-fact-needs-symlink-custom-dropin-type
+        mode: "0644"
+
+# Play 5: Missing owner — expect failure
+- name: Test assert catches empty password_store_owner
+  hosts: debian12,archlinux
+  gather_facts: true
+  tasks:
+    - block:
+        - ansible.builtin.include_role:
+            name: marcus_grant.dotfiles.password_store
+          vars:
+            password_store_owner: ""
+            password_store_repo: "git://controller/pass-remote.git"
+            password_store_preflight_check: false
+      rescue:
+        - ansible.builtin.copy:
+            content: "{{ ansible_failed_result.msg | default('caught missing owner') }}"
+            dest: /tmp/assert-sentinel-missing-owner
+            mode: "0644"
+
+# Play 6: Missing repo — expect failure
+- name: Test assert catches empty password_store_repo
+  hosts: debian12,archlinux
+  gather_facts: true
+  tasks:
+    - block:
+        - ansible.builtin.include_role:
+            name: marcus_grant.dotfiles.password_store
+          vars:
+            password_store_owner: testuser
+            password_store_repo: ""
+            password_store_preflight_check: false
+      rescue:
+        - ansible.builtin.copy:
+            content: "{{ ansible_failed_result.msg | default('caught missing repo') }}"
+            dest: /tmp/assert-sentinel-missing-repo
+            mode: "0644"
+
+# Play 7: Dropin enabled, dir absent — expect failure
+- name: Test assert catches absent dropin directory
+  hosts: debian12,archlinux
+  gather_facts: true
+  tasks:
+    - block:
+        - ansible.builtin.include_role:
+            name: marcus_grant.dotfiles.password_store
+          vars:
+            password_store_owner: testuser
+            password_store_repo: "git://controller/pass-remote.git"
+            password_store_preflight_check: false
+            password_store_profile_dropin: true
+            password_store_profile_dropin_dir: /tmp/nonexistent-dropin-dir
+      rescue:
+        - ansible.builtin.copy:
+            content: "{{ ansible_failed_result.msg | default('caught missing dropin dir') }}"
+            dest: /tmp/assert-sentinel-dropin-dir-missing
+            mode: "0644"

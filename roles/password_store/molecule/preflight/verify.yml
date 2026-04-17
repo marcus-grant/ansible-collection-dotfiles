@@ -1,0 +1,43 @@
+---
+# Verifies preflight.yml behaviour only.
+# Sentinel files written by converge rescue blocks indicate expected failures.
+
+- name: Verify preflight checks
+  hosts: debian12,archlinux
+  gather_facts: false
+  tasks:
+    - name: Stat dirty-store sentinel
+      ansible.builtin.stat:
+        path: /tmp/preflight-dirty-caught
+      register: _dirty_sentinel
+
+    - name: Assert preflight caught uncommitted changes in controller store
+      ansible.builtin.assert:
+        that: _dirty_sentinel.stat.exists
+        fail_msg: >-
+          preflight.yml did not catch the dirty controller store —
+          expected the role to fail and write /tmp/preflight-dirty-caught
+
+    - name: Stat preflight-disabled sentinel (should NOT exist)
+      ansible.builtin.stat:
+        path: /tmp/preflight-disabled-failed
+      register: _disabled_sentinel
+
+    - name: Assert preflight=false did not fail with dirty store
+      ansible.builtin.assert:
+        that: not _disabled_sentinel.stat.exists
+        fail_msg: >-
+          Role failed when password_store_preflight_check=false — it should
+          skip the check entirely regardless of store state
+
+    - name: Stat clean-store sentinel (should NOT exist)
+      ansible.builtin.stat:
+        path: /tmp/preflight-clean-failed
+      register: _clean_sentinel
+
+    - name: Assert preflight=true with clean store did not fail
+      ansible.builtin.assert:
+        that: not _clean_sentinel.stat.exists
+        fail_msg: >-
+          Role failed during preflight with a clean controller store —
+          preflight should pass when there are no uncommitted changes

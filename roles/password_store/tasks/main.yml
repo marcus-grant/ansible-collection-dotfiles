@@ -1,0 +1,67 @@
+---
+- ansible.builtin.include_tasks: preflight.yml
+  when: password_store_preflight_check
+
+- ansible.builtin.include_tasks: assert.yml
+
+- name: Install pass and extra packages (Debian)
+  become: true
+  become_user: root
+  ansible.builtin.apt:
+    name: "{{ vars['password_store_packages_' ~ ansible_os_family] + password_store_extra_packages }}"
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+
+- name: Install pass and extra packages (Archlinux)
+  become: true
+  become_user: root
+  community.general.pacman:
+    name: "{{ vars['password_store_packages_' ~ ansible_os_family] + password_store_extra_packages }}"
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Archlinux'
+
+- name: Ensure parent directory exists for custom store path
+  become: true
+  become_user: "{{ password_store_owner }}"
+  ansible.builtin.file:
+    path: "{{ _password_store_dir_abs | dirname }}"
+    state: directory
+    mode: "0700"
+  when: _password_store_dir_abs != _password_store_home ~ '/.password-store'
+
+- name: Clone password store
+  become: true
+  become_user: "{{ password_store_owner }}"
+  marcus_grant.dotfiles.dotfiles_git:
+    repo: "{{ password_store_repo }}"
+    dest: "{{ _password_store_dir_abs }}"
+
+- name: Create symlink ~/.password-store → store path
+  become: true
+  become_user: "{{ password_store_owner }}"
+  ansible.builtin.file:
+    src: "{{ _password_store_dir_abs }}"
+    dest: "{{ _password_store_home }}/.password-store"
+    state: link
+  when: _password_store_needs_symlink
+
+- name: Write profile dropin
+  become: true
+  become_user: root
+  ansible.builtin.template:
+    src: password_store.sh.j2
+    dest: >-
+      {{ password_store_profile_dropin_dir }}/{{ password_store_profile_dropin_order }}-managed-password_store.sh
+    owner: "{{ password_store_owner }}"
+    mode: "0644"
+  when: password_store_profile_dropin
+
+- name: Verify password store entry
+  become: true
+  become_user: "{{ password_store_owner }}"
+  ansible.builtin.command: "pass show {{ password_store_verify_entry }}"
+  changed_when: false
+  no_log: true
+  when: password_store_verify_entry | length > 0

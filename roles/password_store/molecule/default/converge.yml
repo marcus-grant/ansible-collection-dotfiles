@@ -1,0 +1,72 @@
+---
+# Play 1: Create test users
+- name: Set up test users and directories
+  hosts: debian12,archlinux
+  gather_facts: false
+  tasks:
+    - name: Create testuser (default dir case)
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true
+
+    - name: Create testuser2 (custom dir + dropin case)
+      ansible.builtin.user:
+        name: testuser2
+        state: present
+        create_home: true
+
+    - name: Create testuser3 (custom dir + no dropin case)
+      ansible.builtin.user:
+        name: testuser3
+        state: present
+        create_home: true
+
+    - name: Create dropin directory for testuser2 case
+      ansible.builtin.file:
+        path: /tmp/test-profile-d
+        state: directory
+        mode: "0755"
+
+# Play 2: Case 1 — default dir
+- name: Clone to default dir for testuser
+  hosts: debian12,archlinux
+  gather_facts: true
+  tasks:
+    - ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.password_store
+      vars:
+        password_store_owner: testuser
+        password_store_repo: "git://controller/pass-remote.git"
+        password_store_controller_host: controller
+        password_store_preflight_check: false
+
+# Play 3: Case 2 — custom dir + dropin
+- name: Clone to custom dir with dropin for testuser2
+  hosts: debian12,archlinux
+  gather_facts: true
+  tasks:
+    - ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.password_store
+      vars:
+        password_store_owner: testuser2
+        password_store_repo: "git://controller/pass-remote.git"
+        password_store_controller_host: controller
+        password_store_preflight_check: false
+        password_store_dir: "~/.local/share/pass-store"
+        password_store_profile_dropin: true
+        password_store_profile_dropin_dir: /tmp/test-profile-d
+
+# Play 4: Case 3 — custom dir + no dropin
+- name: Clone to custom dir without dropin for testuser3
+  hosts: debian12,archlinux
+  gather_facts: true
+  tasks:
+    - ansible.builtin.include_role:
+        name: marcus_grant.dotfiles.password_store
+      vars:
+        password_store_owner: testuser3
+        password_store_repo: "git://controller/pass-remote.git"
+        password_store_controller_host: controller
+        password_store_preflight_check: false
+        password_store_dir: "~/.local/share/pass-store"
