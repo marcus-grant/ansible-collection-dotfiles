@@ -9,5 +9,7 @@ password_store_preflight_check: true
 password_store_profile_dropin: false
 password_store_profile_dropin_dir: "{{ profile_d_path | default('~/.config/profile.d') }}"
 password_store_profile_dropin_order: "53"
-password_store_verify_entry: ""
 password_store_extra_packages: []
+# Requires gpg-agent to have passphrase cached — broken in non-interactive
+# contexts where no TTY is available for pinentry. Leave empty by default.
+password_store_verify_entry: ""

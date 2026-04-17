@@ -155,6 +155,22 @@ prevents silent breakage.
 **Constraint:** Normalising existing filenames is a breaking change for any
 operator who sources drop-ins by exact name. Coordinate with the v2.0 rename.
 
+### password_store verify task — non-interactive decryption (v2.0+)
+
+`password_store_verify_entry` runs `pass show <entry>` which triggers GPG
+decryption. GPG invokes pinentry which requires a TTY. Ansible provides
+none — the task fails on any host where gpg-agent has no cached passphrase.
+Options to investigate:
+
+  - Set `GPG_TTY` and use `script(1)` or `unbuffer` to provide a pseudo-TTY
+  - Pre-cache the passphrase via `gpg-preset-passphrase` before the verify
+    task (requires `allow-preset-passphrase` in `gpg-agent.conf` and the
+    keygrip)
+  - Use `gpg --pinentry-mode loopback --passphrase-fd 0` directly instead
+    of `pass show` — bypasses pass but verifies the gpg + store chain
+  - Accept that first-run verification is manual and the task is only
+    useful on subsequent runs where gpg-agent has a cached passphrase
+
 ### Replace community.general.pacman with ansible.builtin.package
 
 **What:** Where `community.general.pacman` is used for Arch Linux package
